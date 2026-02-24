@@ -92,6 +92,8 @@ Modularer Aufbau:
 ![Campers (1)](https://github.com/user-attachments/assets/0f8108f5-f088-4ca1-bf52-8e1d90040d2e)
 
 #### Game Feature
+![Campers (2)](https://github.com/user-attachments/assets/eb6180d2-7725-4baa-85ca-18f7c898e270)
+
 ##### NPCs:
 mandatory:
 - Namen
