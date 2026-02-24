@@ -20,13 +20,13 @@ So entsteht ein Rhythmus:
 
 Narrativ: 
 Ein Jahr ist aufgeteilt in 4 Quartale (3 Runden pro Quartal), 2 Quartale befinden sich in der Hauptsaison (erhöhte Anfragenzahl) und 2 in der Nebensaison.
-Zusätzlich werden Ereignisse eingeführt, welche einmalig pro Quartal eintreffen (das erste Ereignis, mit dem die Entwicklung arbeitet ist Regen, mit dem Effekt der verringerten Anfrgenzahl). Ereignisse gelten für die gesamte Lobby.  
+Zusätzlich werden Ereignisse eingeführt, welche einmalig pro Quartal eintreffen (das erste Ereignis, mit dem die Entwicklung arbeitet ist Regen, mit dem Effekt der verringerten Anfrgenzahl). Ereignisse gelten für die gesamte Lobby.
 
 NPCs:
 mandatory:
 - Namen
 - Typ // wie bisher (Hippies, Familien & Snobs)
-- angefragter Zeitraum 	- Anzahl Gäste
+- angefragter Zeitraum	- Anzahl Gäste
 - Einkommen
 - Bedürfnisse (pro Nacht):
 -- Anzahl Schlafplätze
@@ -41,20 +41,20 @@ Assets:
 Assets als Interface mit den Werten:
 - Preis
 - Flächenbedarf
-3 Arten von Assets: - Buchbare Assets:
+3 Arten von Assets:- Buchbare Assets:
 	- Schlafplätze (bisher Zelte, Wohnwägen & Bungalows)
 - Ressourcen generierende Assets:
     - Bisher Stromgenerator & Wassertank
 - Sonderbedürfnisse erfüllende Assets:
-    - Entwicklungsbeispiel: Sportplatz (Sonderbedürfnis mancher Familien) 
+    - Entwicklungsbeispiel: Sportplatz (Sonderbedürfnis mancher Familien)
 
 
 Ressourcen:
-Aufgeteilt in kaufbare (Fläche) & generierbare (Geld, Strom & Wasser)    Spieler können:
-Mit ausreichend Geld:  	- eine Fläche kaufen und die gesamt Fläche ihres Campingplatzes vergrößern.
+Aufgeteilt in kaufbare (Fläche) & generierbare (Geld, Strom & Wasser)Spieler können:
+Mit ausreichend Geld: 	- eine Fläche kaufen und die gesamt Fläche ihres Campingplatzes vergrößern.
 
 Mit ausreichend Geld & Fläche:
-Einen der 3 Asset typen kaufen & platzieren.  NPC Anfragen sehen & diese, wenn sie die Bedürfnisse erfüllen können annehmen & einem den Bedürfnissen entsprechenden Schlafplatz zuweisen. Oder sie ablehnen.
+Einen der 3 Asset typen kaufen & platzieren.NPC Anfragen sehen & diese, wenn sie die Bedürfnisse erfüllen können annehmen & einem den Bedürfnissen entsprechenden Schlafplatz zuweisen. Oder sie ablehnen.
 
 # Ereigniskarten-System
 
