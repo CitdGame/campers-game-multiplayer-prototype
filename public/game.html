@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campers – Spiel</title>
+<link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  :root {
+    --green-dark: #2d5a27;
+    --green-mid: #4a8c3f;
+    --green-light: #7bc67a;
+    --cream: #faf6ee;
+    --warm: #f5e9c8;
+    --orange: #e8833a;
+    --orange-dark: #c96b22;
+    --brown: #7a4a2a;
+    --sky: #a8d8ea;
+    --yellow: #f4d03f;
+    --red: #e74c3c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background-color: var(--cream);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .scene {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--sky) 0%, #d4eddc 55%, #c8e6c8 100%);
+  }
+
+  .sun {
+    position: absolute;
+    top: 40px;
+    right: 120px;
+    width: 80px; height: 80px;
+    background: var(--yellow);
+    border-radius: 50%;
+    box-shadow: 0 0 40px rgba(244,208,63,0.6);
+    animation: pulse-sun 4s ease-in-out infinite;
+  }
+
+  @keyframes pulse-sun {
+    0%,100% { transform: scale(1); box-shadow: 0 0 40px rgba(244,208,63,0.6); }
+    50% { transform: scale(1.05); box-shadow: 0 0 70px rgba(244,208,63,0.8); }
+  }
+
+  .cloud {
+    position: absolute;
+    background: white;
+    border-radius: 50px;
+    opacity: 0.85;
+    animation: drift linear infinite;
+  }
+  .cloud::before, .cloud::after {
+    content: '';
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+  }
+  .cloud-1 { width: 120px; height: 38px; top: 60px; animation-duration: 35s; animation-delay: 0s; left: -140px; }
+  .cloud-1::before { width: 60px; height: 60px; top: -30px; left: 20px; }
+  .cloud-1::after { width: 40px; height: 40px; top: -20px; left: 55px; }
+  .cloud-2 { width: 90px; height: 28px; top: 120px; animation-duration: 50s; animation-delay: -15s; left: -110px; opacity: 0.65; }
+  .cloud-2::before { width: 45px; height: 45px; top: -22px; left: 15px; }
+  .cloud-2::after { width: 30px; height: 30px; top: -15px; left: 40px; }
+
+  @keyframes drift { from { transform: translateX(0); } to { transform: translateX(110vw); } }
+
+  .trees {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: flex-end;
+    pointer-events: none;
+  }
+
+  .tree {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: sway 3s ease-in-out infinite;
+  }
+  .tree:nth-child(2n) { animation-delay: -1s; }
+  .tree:nth-child(3n) { animation-delay: -2s; }
+
+  @keyframes sway {
+    0%,100% { transform: rotate(-1.5deg) translateY(0); }
+    50% { transform: rotate(1.5deg) translateY(-2px); }
+  }
+
+  .tree-top {
+    width: 0;
+    height: 0;
+    border-left: solid transparent;
+    border-right: solid transparent;
+    border-bottom: solid var(--green-dark);
+    position: relative;
+  }
+  .tree-top::after {
+    content: '';
+    position: absolute;
+    width: 0; height: 0;
+    border-left: solid transparent;
+    border-right: solid transparent;
+    border-bottom: solid var(--green-mid);
+    bottom: 0;
+  }
+  .tree-trunk {
+    background: var(--brown);
+    border-radius: 2px;
+  }
+
+  .t1 .tree-top { border-left-width: 22px; border-right-width: 22px; border-bottom-width: 55px; }
+  .t1 .tree-top::after { border-left-width: 18px; border-right-width: 18px; border-bottom-width: 40px; bottom: 10px; left: -18px; }
+  .t1 .tree-trunk { width: 10px; height: 20px; }
+  .t2 .tree-top { border-left-width: 18px; border-right-width: 18px; border-bottom-width: 44px; }
+  .t2 .tree-top::after { border-left-width: 14px; border-right-width: 14px; border-bottom-width: 32px; bottom: 8px; left: -14px; }
+  .t2 .tree-trunk { width: 8px; height: 16px; }
+  .t3 .tree-top { border-left-width: 28px; border-right-width: 28px; border-bottom-width: 70px; }
+  .t3 .tree-top::after { border-left-width: 22px; border-right-width: 22px; border-bottom-width: 50px; bottom: 15px; left: -22px; }
+  .t3 .tree-trunk { width: 13px; height: 26px; }
+
+  .grass {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(180deg, var(--green-light) 0%, var(--green-mid) 100%);
+    border-radius: 60% 60% 0 0 / 30px 30px 0 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 10;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .logo-badge {
+    display: inline-block;
+    background: var(--green-dark);
+    border: 4px solid var(--green-light);
+    border-radius: 20px;
+    padding: 6px 22px;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+
+  .logo-badge span {
+    font-family: 'Boogaloo', cursive;
+    font-size: 36px;
+    color: var(--yellow);
+    text-shadow: 3px 3px 0 var(--orange-dark), 5px 5px 0 rgba(0,0,0,0.15);
+    letter-spacing: 2px;
+    line-height: 1;
+  }
+
+  .game-info {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .info-box {
+    background: var(--warm);
+    border: 2px solid rgba(45,90,39,0.2);
+    border-radius: 12px;
+    padding: 12px 20px;
+    text-align: center;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+  }
+
+  .info-box .label {
+    font-size: 11px;
+    color: #888;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .info-box .value {
+    font-family: 'Boogaloo', cursive;
+    font-size: 24px;
+    color: var(--green-dark);
+  }
+
+  .event-banner {
+    background: linear-gradient(90deg, #3498db, #2980b9);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 12px;
+    text-align: center;
+    font-weight: 700;
+    margin-bottom: 20px;
+    animation: pulse 2s infinite;
+    display: none;
+  }
+
+  .event-banner.rain {
+    background: linear-gradient(90deg, #5d6d7e, #34495e);
+  }
+
+  .event-banner.festival {
+    background: linear-gradient(90deg, #9b59b6, #8e44ad);
+  }
+
+  .event-banner.heatwave {
+    background: linear-gradient(90deg, #e74c3c, #c0392b);
+  }
+
+  @keyframes pulse {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 900px) {
+    .main-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .panel {
+    background: var(--warm);
+    border: 3px solid rgba(45,90,39,0.2);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.1);
+  }
+
+  .panel-title {
+    font-family: 'Boogaloo', cursive;
+    font-size: 22px;
+    color: var(--green-dark);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .player-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .stat {
+    background: white;
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .stat-icon { font-size: 24px; display: block; margin-bottom: 4px; }
+  .stat-value { font-family: 'Boogaloo', cursive; font-size: 20px; color: var(--green-dark); }
+  .stat-label { font-size: 10px; color: #888; font-weight: 700; text-transform: uppercase; }
+
+  .assets-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .asset-btn {
+    background: white;
+    border: 2px solid rgba(45,90,39,0.2);
+    border-radius: 12px;
+    padding: 12px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .asset-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    border-color: var(--green-mid);
+    box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+  }
+
+  .asset-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .asset-btn .icon { font-size: 28px; display: block; margin-bottom: 4px; }
+  .asset-btn .name { font-weight: 700; font-size: 13px; color: var(--green-dark); }
+  .asset-btn .price { font-size: 12px; color: var(--orange); font-weight: 700; }
+  .asset-btn .space { font-size: 11px; color: #888; }
+
+  .actions-panel {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-block;
+    font-family: 'Boogaloo', cursive;
+    font-size: 18px;
+    letter-spacing: 0.5px;
+    padding: 10px 20px;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.12s, box-shadow 0.12s;
+    text-decoration: none;
+  }
+
+  .btn:hover:not(:disabled) { transform: scale(1.05); }
+  .btn:active:not(:disabled) { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-green { background: var(--green-mid); color: white; box-shadow: 0 4px 0 var(--green-dark); }
+  .btn-orange { background: var(--orange); color: white; box-shadow: 0 4px 0 var(--orange-dark); }
+  .btn-red { background: var(--red); color: white; box-shadow: 0 4px 0 #c0392b; }
+
+  .npc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .npc-card {
+    background: white;
+    border-radius: 12px;
+    padding: 14px;
+    border: 2px solid rgba(45,90,39,0.15);
+  }
+
+  .npc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .npc-name { font-weight: 800; color: var(--green-dark); font-size: 15px; }
+  .npc-type { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 700; }
+  .npc-type.hippies { background: #9b59b6; color: white; }
+  .npc-type.families { background: #3498db; color: white; }
+  .npc-type.snobs { background: #f39c12; color: white; }
+
+  .npc-details {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+
+  .npc-detail { text-align: center; }
+  .npc-detail .val { font-weight: 800; color: var(--green-dark); }
+  .npc-detail .lbl { color: #888; font-size: 10px; }
+
+  .npc-special {
+    font-size: 11px;
+    color: #e67e22;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .npc-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .npc-actions .btn { flex: 1; font-size: 14px; padding: 8px 12px; }
+
+  .npc-card.accepted {
+    border-color: var(--green-mid);
+    background: rgba(123,198,122,0.15);
+  }
+
+  .players-panel {
+    margin-bottom: 20px;
+  }
+
+  .player-list {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .player-card {
+    background: white;
+    border-radius: 12px;
+    padding: 10px 16px;
+    text-align: center;
+    border: 3px solid transparent;
+  }
+
+  .player-card.active {
+    border-color: var(--yellow);
+    box-shadow: 0 0 15px rgba(244,208,63,0.5);
+  }
+
+  .player-card .icon { font-size: 24px; }
+  .player-card .name { font-weight: 700; font-size: 13px; color: var(--green-dark); }
+  .player-card .score { font-size: 11px; color: var(--orange); }
+
+  .turn-indicator {
+    text-align: center;
+    padding: 10px;
+    background: var(--yellow);
+    border-radius: 12px;
+    font-family: 'Boogaloo', cursive;
+    font-size: 18px;
+    color: var(--brown);
+    margin-bottom: 15px;
+  }
+
+  .owned-assets {
+    margin-top: 15px;
+  }
+
+  .owned-assets-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .owned-asset {
+    background: white;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--warm);
+    border-radius: 24px;
+    border: 3px solid rgba(45,90,39,0.2);
+    padding: 40px;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    animation: pop-in 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes pop-in {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .modal h2 {
+    font-family: 'Boogaloo', cursive;
+    font-size: 28px;
+    color: var(--green-dark);
+    margin-bottom: 8px;
+  }
+
+  .modal p { font-size: 14px; color: #666; font-weight: 600; margin-bottom: 20px; }
+
+  .sleeping-spot-option {
+    background: white;
+    border: 2px solid rgba(45,90,39,0.2);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sleeping-spot-option:hover:not(.disabled) {
+    border-color: var(--green-mid);
+    transform: translateY(-2px);
+  }
+  .sleeping-spot-option.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .sleeping-spot-option .spot-name { font-weight: 700; color: var(--green-dark); }
+  .sleeping-spot-option .spot-capacity { font-size: 12px; color: #888; }
+  .sleeping-spot-option .spot-guests { font-size: 12px; color: #e67e22; margin-top: 4px; }
+
+  .input-field {
+    width: 100%;
+    padding: 12px 18px;
+    border: 2px solid rgba(45,90,39,0.3);
+    border-radius: 12px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    background: white;
+    outline: none;
+    text-align: center;
+    letter-spacing: 2px;
+    margin-bottom: 14px;
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+    color: #aaa;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(0,0,0,0.1);
+  }
+
+  .lobby-code {
+    background: var(--green-dark);
+    color: var(--yellow);
+    font-family: 'Boogaloo', cursive;
+    font-size: 36px;
+    letter-spacing: 8px;
+    padding: 16px 24px;
+    border-radius: 14px;
+    margin: 12px 0;
+    cursor: pointer;
+  }
+
+  .player-slots {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 16px 0;
+  }
+
+  .slot {
+    background: white;
+    border: 2px dashed rgba(45,90,39,0.25);
+    border-radius: 12px;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 12px;
+    color: #aaa;
+    font-weight: 700;
+  }
+  .slot.filled {
+    border: 2px solid var(--green-light);
+    color: var(--green-dark);
+    background: rgba(123,198,122,0.12);
+  }
+
+  .game-over {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .game-over.active { display: flex; }
+
+  .game-over-content {
+    background: var(--warm);
+    border-radius: 24px;
+    padding: 40px;
+    text-align: center;
+    border: 4px solid var(--yellow);
+  }
+
+  .winner-list {
+    margin: 20px 0;
+    text-align: left;
+  }
+
+  .winner-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    font-weight: 700;
+  }
+  .winner-item:first-child { color: var(--orange); font-size: 18px; }
+</style>
+</head>
+<body>
+
+<div class="scene">
+  <div class="sun"></div>
+  <div class="cloud cloud-1"></div>
+  <div class="cloud cloud-2"></div>
+  <div class="grass"></div>
+  <div class="trees" id="trees"></div>
+</div>
+
+<div class="wrapper" id="landingPage">
+  <div class="header">
+    <div class="logo-badge">
+      <span>⛺ CAMPERS</span>
+    </div>
+  </div>
+
+  <div class="panel" style="max-width: 450px; margin: 0 auto;">
+    <h2 style="font-family: 'Boogaloo'; font-size: 24px; color: var(--green-dark); margin-bottom: 20px;">🎮 Online Spielen</h2>
+    <input class="input-field" id="playerName" type="text" placeholder="DEIN NAME" maxlength="12">
+    <button class="btn btn-red" style="width: 100%; font-size: 20px; margin-bottom: 12px;" onclick="createLobby()">
+      ➕ Neue Lobby erstellen
+    </button>
+    <div class="divider">oder</div>
+    <input class="input-field" id="joinCode" type="text" placeholder="CODE EINGEBEN" maxlength="6" style="text-transform: uppercase;">
+    <button class="btn btn-green" style="width: 100%;" onclick="joinLobby()">🚪 Lobby beitreten</button>
+  </div>
+</div>
+
+<div class="wrapper" id="lobbyPage" style="display: none;">
+  <div class="header">
+    <div class="logo-badge">
+      <span>⛺ CAMPERS</span>
+    </div>
+  </div>
+
+  <div class="panel" style="max-width: 450px; margin: 0 auto;">
+    <h2 style="font-family: 'Boogaloo'; font-size: 24px; color: var(--green-dark); margin-bottom: 10px;">⛺ Lobby</h2>
+    <p>Teile diesen Code mit Freunden:</p>
+    <div class="lobby-code" id="lobbyCode" onclick="copyCode()">------</div>
+    <div class="player-slots" id="playerSlots"></div>
+    <p id="lobbyStatus" style="font-size: 13px; color: #888;">Warte auf Spieler…</p>
+    <button class="btn btn-green" id="startBtn" style="width: 100%; margin-top: 15px;" onclick="startGame()">🎮 Spiel starten</button>
+  </div>
+</div>
+
+<div class="wrapper" id="gamePage" style="display: none;">
+  <div class="header">
+    <div class="logo-badge">
+      <span>⛺ CAMPERS</span>
+    </div>
+  </div>
+
+  <div class="event-banner" id="eventBanner"></div>
+
+  <div class="game-info">
+    <div class="info-box">
+      <div class="label">Jahr</div>
+      <div class="value" id="yearVal">1</div>
+    </div>
+    <div class="info-box">
+      <div class="label">Quartal</div>
+      <div class="value" id="quarterVal">1</div>
+    </div>
+    <div class="info-box">
+      <div class="label">Runde</div>
+      <div class="value" id="roundVal">1</div>
+    </div>
+    <div class="info-box">
+      <div class="label">Saison</div>
+      <div class="value" id="seasonVal">Haupt</div>
+    </div>
+  </div>
+
+  <div class="turn-indicator" id="turnIndicator">
+    🎯 Du bist dran!
+  </div>
+
+  <div class="players-panel">
+    <div class="player-list" id="playerList"></div>
+  </div>
+
+  <div class="main-grid">
+    <div>
+      <div class="panel">
+        <div class="panel-title">🎒 Deine Ressourcen</div>
+        <div class="player-stats">
+          <div class="stat">
+            <span class="stat-icon">💰</span>
+            <div class="stat-value" id="moneyVal">500</div>
+            <div class="stat-label">Geld</div>
+          </div>
+          <div class="stat">
+            <span class="stat-icon">📐</span>
+            <div class="stat-value" id="spaceVal">10/10</div>
+            <div class="stat-label">Fläche</div>
+          </div>
+          <div class="stat">
+            <span class="stat-icon">⚡</span>
+            <div class="stat-value" id="electricVal">5</div>
+            <div class="stat-label">Strom</div>
+          </div>
+          <div class="stat">
+            <span class="stat-icon">💧</span>
+            <div class="stat-value" id="waterVal">5</div>
+            <div class="stat-label">Wasser</div>
+          </div>
+        </div>
+
+        <div class="owned-assets">
+          <div class="panel-title" style="font-size: 18px;">🏕️ Deine Assets</div>
+          <div class="owned-assets-list" id="ownedAssets"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top: 20px;">
+        <div class="panel-title">🏗️ Bauen & Kaufen</div>
+        <div class="actions-panel">
+          <button class="btn btn-green" id="buySpaceBtn" onclick="buySpace()">+5 Fläche (100€)</button>
+        </div>
+        <div class="assets-grid" style="margin-top: 15px;">
+          <button class="asset-btn" onclick="buyAsset('tent')">
+            <span class="icon">⛺</span>
+            <span class="name">Zelt</span>
+            <span class="price">50€</span>
+            <span class="space">1 Fläche | 2 Pers.</span>
+          </button>
+          <button class="asset-btn" onclick="buyAsset('caravan')">
+            <span class="icon">🚐</span>
+            <span class="name">Wohnwagen</span>
+            <span class="price">150€</span>
+            <span class="space">2 Fläche | 4 Pers.</span>
+          </button>
+          <button class="asset-btn" onclick="buyAsset('bungalow')">
+            <span class="icon">🏠</span>
+            <span class="name">Bungalow</span>
+            <span class="price">300€</span>
+            <span class="space">3 Fläche | 6 Pers.</span>
+          </button>
+          <button class="asset-btn" onclick="buyAsset('generator')">
+            <span class="icon">⚡</span>
+            <span class="name">Generator</span>
+            <span class="price">200€</span>
+            <span class="space">2 Fläche | +5 Strom</span>
+          </button>
+          <button class="asset-btn" onclick="buyAsset('watertank')">
+            <span class="icon">💧</span>
+            <span class="name">Wassertank</span>
+            <span class="price">150€</span>
+            <span class="space">2 Fläche | +5 Wasser</span>
+          </button>
+          <button class="asset-btn" onclick="buyAsset('sportsfield')">
+            <span class="icon">⚽</span>
+            <span class="name">Sportplatz</span>
+            <span class="price">250€</span>
+            <span class="space">3 Fläche | Sport</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="panel-title">👥 Gäste-Anfragen</div>
+        <div class="npc-list" id="npcList"></div>
+      </div>
+
+      <div class="panel" style="margin-top: 20px;">
+        <button class="btn btn-orange" style="width: 100%; font-size: 20px;" id="endTurnBtn" onclick="endTurn()">
+          ✅ Zug beenden
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="errorModal">
+  <div class="modal">
+    <h2>⚠️ Fehler</h2>
+    <p id="errorMsg"></p>
+    <button class="btn btn-green" onclick="closeError()">OK</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sleepingSpotModal">
+  <div class="modal">
+    <h2>🛏️ Schlafplatz wählen</h2>
+    <p>Wähle einen Schlafplatz für <b id="selectedNpcName"></b></p>
+    <p style="font-size:12px;color:#888;">Benötigt: <span id="selectedNpcGuests"></span> Gäste</p>
+    <div id="sleepingSpotsList" style="max-height:250px;overflow-y:auto;margin:15px 0;"></div>
+    <button class="btn btn-red" style="width:100%;" onclick="closeSleepingSpotModal()">Abbrechen</button>
+  </div>
+</div>
+
+<div class="game-over" id="gameOverModal">
+  <div class="game-over-content">
+    <h2 style="font-family: 'Boogaloo'; font-size: 32px; color: var(--green-dark);">🏆 Spielende!</h2>
+    <p>Nach 12 Runden ist die Saison vorbei.</p>
+    <div class="winner-list" id="winnerList"></div>
+    <button class="btn btn-green" onclick="location.reload()">Neues Spiel</button>
+  </div>
+</div>
+
+<script>
+const socket = io();
+let myPlayerIndex = 0;
+let gameState = null;
+let lobbyCode = '';
+
+const playerIcons = ['🏕️','🎒','🌲','🔥','🎣','⛺'];
+
+const treesEl = document.getElementById('trees');
+const treeTypes = ['t1','t2','t3'];
+for (let i = 0; i < 18; i++) {
+  const type = treeTypes[Math.floor(Math.random() * 3)];
+  const scale = 0.6 + Math.random() * 0.5;
+  const ml = i === 0 ? 0 : -8 + Math.random() * 25;
+  const div = document.createElement('div');
+  div.className = `tree ${type}`;
+  div.style.cssText = `transform: scale(${scale}); margin-left: ${ml}px;`;
+  div.innerHTML = `<div class="tree-top"></div><div class="tree-trunk"></div>`;
+  treesEl.appendChild(div);
+}
+
+function showError(msg) {
+  document.getElementById('errorMsg').textContent = msg;
+  document.getElementById('errorModal').classList.add('active');
+}
+
+function closeError() {
+  document.getElementById('errorModal').classList.remove('active');
+}
+
+function createLobby() {
+  const name = document.getElementById('playerName').value.trim() || 'Spieler';
+  socket.emit('createLobby', name);
+}
+
+function joinLobby() {
+  const name = document.getElementById('playerName').value.trim() || 'Spieler';
+  const code = document.getElementById('joinCode').value.trim().toUpperCase();
+  if (code.length < 4) {
+    showError('Bitte gib einen gültigen Code ein!');
+    return;
+  }
+  socket.emit('joinLobby', { code, playerName: name });
+}
+
+socket.on('lobbyCreated', (data) => {
+  lobbyCode = data.code;
+  myPlayerIndex = 0;
+  document.getElementById('lobbyCode').textContent = lobbyCode;
+  document.getElementById('landingPage').style.display = 'none';
+  document.getElementById('lobbyPage').style.display = 'block';
+  renderPlayerSlots(data.players);
+});
+
+socket.on('lobbyJoined', (data) => {
+  lobbyCode = data.code;
+  myPlayerIndex = data.players.length - 1;
+  document.getElementById('lobbyCode').textContent = lobbyCode;
+  document.getElementById('landingPage').style.display = 'none';
+  document.getElementById('lobbyPage').style.display = 'block';
+  renderPlayerSlots(data.players);
+});
+
+socket.on('playerJoined', (data) => {
+  renderPlayerSlots(data.players);
+  if (gameState) {
+    updateGameState(data);
+  }
+});
+
+socket.on('error', (msg) => {
+  showError(msg);
+});
+
+function renderPlayerSlots(players) {
+  const container = document.getElementById('playerSlots');
+  container.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const filled = i < players.length;
+    const div = document.createElement('div');
+    div.className = `slot ${filled ? 'filled' : ''}`;
+    div.innerHTML = filled ? `<b>${playerIcons[i]}</b><br>${players[i].name}` : 'Wartet…';
+    container.appendChild(div);
+  }
+  
+  const status = document.getElementById('lobbyStatus');
+  if (players.length < 2) {
+    status.textContent = `Warte auf Spieler… (${players.length}/6) – mind. 2 benötigt`;
+    document.getElementById('startBtn').disabled = true;
+  } else {
+    status.textContent = `${players.length} Spieler bereit – Du kannst starten!`;
+    document.getElementById('startBtn').disabled = false;
+  }
+}
+
+function startGame() {
+  socket.emit('startGame');
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(lobbyCode);
+  alert('Code kopiert!');
+}
+
+socket.on('gameStarted', (state) => {
+  gameState = state;
+  document.getElementById('lobbyPage').style.display = 'none';
+  document.getElementById('gamePage').style.display = 'block';
+  updateGameUI();
+});
+
+socket.on('gameStateUpdated', (state) => {
+  const prevQuarter = gameState ? gameState.quarter : 0;
+  const prevRound = gameState ? gameState.round : 0;
+  gameState = state;
+  
+  updateGameUI();
+  
+  if (state.round === 1 && (prevQuarter !== state.quarter || prevRound !== state.round)) {
+    if (state.npcs.length > 0) {
+      showError(`Neues Quartal ${state.quarter}! ${state.npcs.length} Gäste warten.`);
+    }
+  }
+});
+
+socket.on('quarterChanged', (data) => {
+  let eventMsg = '';
+  if (data.event === 'rain') {
+    eventMsg = '🌧️ Regen';
+  } else if (data.event === 'festival') {
+    eventMsg = '🎉 Festival';
+  } else if (data.event === 'heatwave') {
+    eventMsg = '🔥 Hitzewelle';
+  }
+  
+  if (eventMsg) {
+    showError(`Quartal ${data.quarter} beginnt mit ${eventMsg}!`);
+  } else {
+    showError(`Quartal ${data.quarter} beginnt!`);
+  }
+});
+
+function updateGameUI() {
+  document.getElementById('yearVal').textContent = gameState.year;
+  document.getElementById('quarterVal').textContent = gameState.quarter;
+  document.getElementById('roundVal').textContent = gameState.round;
+  
+  const isHighSeason = gameState.quarter <= 2;
+  document.getElementById('seasonVal').textContent = isHighSeason ? 'Haupt' : 'Neben';
+  
+  const eventBanner = document.getElementById('eventBanner');
+  if (gameState.event === 'rain') {
+    eventBanner.textContent = '🌧️ REGEN – Weniger Gäste in diesem Quartal!';
+    eventBanner.className = 'event-banner rain';
+    eventBanner.style.display = 'block';
+  } else if (gameState.event === 'festival') {
+    eventBanner.textContent = '🎉 FESTIVAL – Mehr Gäste und höhere Einnahmen!';
+    eventBanner.className = 'event-banner festival';
+    eventBanner.style.display = 'block';
+  } else if (gameState.event === 'heatwave') {
+    eventBanner.textContent = '🔥 HITZEWELLE – Erhöhter Wasserbedarf!';
+    eventBanner.className = 'event-banner heatwave';
+    eventBanner.style.display = 'block';
+  } else {
+    eventBanner.style.display = 'none';
+  }
+  
+  const player = gameState.players[myPlayerIndex];
+  document.getElementById('moneyVal').textContent = player.money;
+  document.getElementById('spaceVal').textContent = `${player.usedSpace}/${player.space}`;
+  document.getElementById('electricVal').textContent = player.electricity;
+  document.getElementById('waterVal').textContent = player.water;
+  
+  const ownedAssets = document.getElementById('ownedAssets');
+  if (player.assets.length === 0) {
+    ownedAssets.innerHTML = '<span style="color:#888;font-size:12px;">Noch keine Assets</span>';
+  } else {
+    ownedAssets.innerHTML = player.assets.map(a => {
+      if (a.type === 'sleeping') {
+        const currentGuests = a.guests?.length || 0;
+        const isOccupied = currentGuests > 0;
+        const guestInfo = isOccupied ? a.guests.map(g => `<div style="font-size:10px;color:#666;">${g.name} (${g.remainingNights} Nächte)</div>`).join('') : '';
+        return `
+          <div class="owned-asset" style="${isOccupied ? 'background:#ffeaa7;' : ''}">
+            <div style="font-size:20px;">🛏️</div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:13px;">${a.name}</div>
+              <div style="font-size:11px;color:${isOccupied ? '#e67e22' : '#27ae60'};">
+                ${currentGuests}/${a.capacity} belegt
+              </div>
+              ${guestInfo}
+            </div>
+          </div>
+        `;
+      }
+      return `
+        <div class="owned-asset">
+          ${a.type === 'resource' ? (a.produces?.electricity ? '⚡' : '💧') : '⚽'}
+          ${a.name}
+        </div>
+      `;
+    }).join('');
+  }
+  
+  renderPlayerList();
+  renderNPCList();
+  updateTurnIndicator();
+  
+  document.getElementById('buySpaceBtn').disabled = player.money < 100;
+  
+  if (gameState.year > 1 || gameState.quarter > 4 || (gameState.quarter === 4 && gameState.round > 3)) {
+    showGameOver();
+  }
+}
+
+function renderPlayerList() {
+  const container = document.getElementById('playerList');
+  container.innerHTML = gameState.players.map((p, i) => `
+    <div class="player-card ${i === gameState.currentPlayerIndex ? 'active' : ''}">
+      <div class="icon">${playerIcons[i]}</div>
+      <div class="name">${p.name}</div>
+      <div class="score">${p.score} Pkt</div>
+    </div>
+  `).join('');
+}
+
+function updateTurnIndicator() {
+  const indicator = document.getElementById('turnIndicator');
+  const isMyTurn = gameState.currentPlayerIndex === myPlayerIndex;
+  
+  if (isMyTurn) {
+    indicator.textContent = '🎯 Du bist dran!';
+    indicator.style.background = 'var(--yellow)';
+  } else {
+    const player = gameState.players[gameState.currentPlayerIndex];
+    indicator.textContent = `⏳ ${player.name} ist dran…`;
+    indicator.style.background = 'var(--green-light)';
+  }
+  
+  document.getElementById('endTurnBtn').disabled = !isMyTurn;
+}
+
+function renderNPCList() {
+  const container = document.getElementById('npcList');
+  const availableNPCs = gameState.npcs.filter(n => !n.accepted);
+  
+  if (availableNPCs.length === 0) {
+    container.innerHTML = '<p style="color:#888;text-align:center;padding:20px;">Keine Anfragen verfügbar</p>';
+    return;
+  }
+  
+  container.innerHTML = availableNPCs.map(npc => `
+    <div class="npc-card">
+      <div class="npc-header">
+        <span class="npc-name">${npc.name}</span>
+        <span class="npc-type ${npc.type.toLowerCase()}">${npc.type === 'Hippies' ? '🌿' : npc.type === 'Families' ? '👨‍👩‍👧' : '💎'} ${npc.type}</span>
+      </div>
+      <div class="npc-details">
+        <div class="npc-detail">
+          <div class="val">👥 ${npc.guests}</div>
+          <div class="lbl">Gäste</div>
+        </div>
+        <div class="npc-detail">
+          <div class="val">🌙 ${npc.nights}</div>
+          <div class="lbl">Nächte</div>
+        </div>
+        <div class="npc-detail">
+          <div class="val">💰 ${npc.income}</div>
+          <div class="lbl">Einnahmen</div>
+        </div>
+      </div>
+      <div class="npc-details">
+        <div class="npc-detail">
+          <div class="val">🛏️ ${npc.needs.sleepingSpots}</div>
+          <div class="lbl">Schlafpl.</div>
+        </div>
+        <div class="npc-detail">
+          <div class="val">⚡ ${npc.needs.electricity}</div>
+          <div class="lbl">Strom</div>
+        </div>
+        <div class="npc-detail">
+          <div class="val">💧 ${npc.needs.water}</div>
+          <div class="lbl">Wasser</div>
+        </div>
+      </div>
+      ${npc.specialNeeds.length > 0 ? `<div class="npc-special">✨ Benötigt: ${npc.specialNeeds.join(', ')}</div>` : ''}
+      <div class="npc-actions">
+        <button class="btn btn-green" onclick="acceptNPC('${npc.id}')">✓ Annehmen</button>
+        <button class="btn btn-red" onclick="rejectNPC('${npc.id}')">✗ Ablehnen</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function buySpace() {
+  socket.emit('buySpace');
+}
+
+function buyAsset(type) {
+  socket.emit('buyAsset', type);
+}
+
+function acceptNPC(npcId) {
+  const npc = gameState.npcs.find(n => n.id === npcId);
+  if (!npc) return;
+  
+  const player = gameState.players[myPlayerIndex];
+  const sleepingAssets = player.assets.filter(a => a.type === 'sleeping');
+  
+  if (sleepingAssets.length === 0) {
+    showError('Du hast keine Schlafplätze! Baue zuerst Zelte, Wohnwägen oder Bungalows.');
+    return;
+  }
+  
+  document.getElementById('selectedNpcName').textContent = npc.name;
+  document.getElementById('selectedNpcGuests').textContent = npc.guests;
+  
+  const spotsList = document.getElementById('sleepingSpotsList');
+  spotsList.innerHTML = sleepingAssets.map(asset => {
+    const currentGuests = asset.guests?.length || 0;
+    const available = asset.capacity - currentGuests;
+    const canFit = available >= npc.guests;
+    const hasEnoughResources = player.electricity >= npc.needs.electricity && player.water >= npc.needs.water;
+    const isDisabled = !canFit || !hasEnoughResources;
+    
+    let guestInfo = '';
+    if (asset.guests && asset.guests.length > 0) {
+      guestInfo = `<div class="spot-guests">Belegt: ${asset.guests.map(g => `${g.name} (${g.remainingNights} Nächte)`).join(', ')}</div>`;
+    }
+    
+    return `
+      <div class="sleeping-spot-option ${isDisabled ? 'disabled' : ''}" onclick="${isDisabled ? '' : `selectSleepingSpot('${npcId}', '${asset.id}')`}">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:24px;">🛏️</span>
+          <div>
+            <div class="spot-name">${asset.name}</div>
+            <div class="spot-capacity">Kapazität: ${asset.capacity} | Frei: ${available}</div>
+            ${guestInfo}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  document.getElementById('sleepingSpotModal').classList.add('active');
+}
+
+function selectSleepingSpot(npcId, assetId) {
+  closeSleepingSpotModal();
+  socket.emit('acceptNPC', { npcId, assetId });
+}
+
+function closeSleepingSpotModal() {
+  document.getElementById('sleepingSpotModal').classList.remove('active');
+}
+
+function rejectNPC(npcId) {
+  socket.emit('rejectNPC', npcId);
+}
+
+function endTurn() {
+  socket.emit('endTurn');
+}
+
+function showGameOver() {
+  const sorted = [...gameState.players].sort((a, b) => b.score - a.score);
+  const container = document.getElementById('winnerList');
+  container.innerHTML = sorted.map((p, i) => `
+    <div class="winner-item">
+      <span>${i + 1}. ${p.name}</span>
+      <span>${p.score} Punkte</span>
+    </div>
+  `).join('');
+  document.getElementById('gameOverModal').classList.add('active');
+}
+</script>
+
+</body>
+</html>
