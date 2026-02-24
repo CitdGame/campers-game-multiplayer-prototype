@@ -89,6 +89,8 @@ Modularer Aufbau:
     - **Gästemanagement**: Buchungen annehmen, Gäste platzieren oder entfernen
 3. Am Rundenende: Einkommen durch aktive Gäste erhalten
 
+![Campers](https://github.com/user-attachments/assets/5fadad38-371b-4e46-813c-0dfa1dc70ad5)
+
 #### Game Feature
 ##### NPCs:
 mandatory:
