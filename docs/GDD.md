@@ -126,3 +126,4 @@ Physisches Brettspiel, optional mit Erweiterungsboxen.
     
 - Lizenzierbar als digitale Version oder Spin-off-Kartenspiele
     
+Test für Malcolm
