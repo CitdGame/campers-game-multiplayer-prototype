@@ -4,7 +4,7 @@
 **Campers** ist ein rundenbasiertes Online-Multiplayer mit strategischen und wirtschaftlichen Mechaniken. Die Spieler:innen übernehmen die Leitung eines Campingplatzes, verwalten Ressourcen, bauen Schlafplätze aus, managen Gäste und konkurrieren um die meisten Siegespunkte am Ende einer Saison.
 
 - **Genre:** Strategie, Simulation, Deck-Building 
-- **Spieleranzahl:** 2–4
+- **Spieleranzahl:** 2–8
 - **Dauer:** 70–150 Minuten
 - **Alter:** 14+
 - **Projektumfang:** Webgame mit Karten-, Token- und Ressourcenmanagement.

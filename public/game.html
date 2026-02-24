@@ -562,7 +562,7 @@
 
   .player-slots {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 10px;
     margin: 16px 0;
   }
@@ -826,7 +826,7 @@ let myPlayerIndex = 0;
 let gameState = null;
 let lobbyCode = '';
 
-const playerIcons = ['🏕️','🎒','🌲','🔥','🎣','⛺'];
+const playerIcons = ['🏕️','🎒','🌲','🔥'];
 
 const treesEl = document.getElementById('trees');
 const treeTypes = ['t1','t2','t3'];
@@ -897,7 +897,7 @@ socket.on('error', (msg) => {
 function renderPlayerSlots(players) {
   const container = document.getElementById('playerSlots');
   container.innerHTML = '';
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     const filled = i < players.length;
     const div = document.createElement('div');
     div.className = `slot ${filled ? 'filled' : ''}`;
@@ -907,7 +907,7 @@ function renderPlayerSlots(players) {
   
   const status = document.getElementById('lobbyStatus');
   if (players.length < 2) {
-    status.textContent = `Warte auf Spieler… (${players.length}/6) – mind. 2 benötigt`;
+    status.textContent = `Warte auf Spieler… (${players.length}/8) – mind. 2 benötigt`;
     document.getElementById('startBtn').disabled = true;
   } else {
     status.textContent = `${players.length} Spieler bereit – Du kannst starten!`;
@@ -946,17 +946,27 @@ socket.on('gameStateUpdated', (state) => {
 });
 
 socket.on('quarterChanged', (data) => {
+  const events = data.events || [];
+  const EVENT_NAMES = {
+    rain: 'Regen', storm: 'Sturm', heatwave: 'Hitzewelle', cold: 'Kälte', drought: 'Dürre',
+    tourism_boom: 'Tourismus-Boom', recession: 'Rezession', luxury_trend: 'Luxus-Trend', minimalism_trend: 'Minimalismus',
+    festival: 'Festival', sports_event: 'Sport-Event', fishing_competition: 'Angelwettbewerb', music_week: 'Musik-Woche',
+    influencer_hype: 'Influencer', online_storm: 'Online-Storm', award: 'Auszeichnung', wildlife: 'Wildtiere'
+  };
+  const EVENT_ICONS = {
+    rain: '🌧️', storm: '⛈️', heatwave: '🔥', cold: '❄️', drought: '🏜️',
+    tourism_boom: '📈', recession: '📉', luxury_trend: '💎', minimalism_trend: '📦',
+    festival: '🎉', sports_event: '🏆', fishing_competition: '🎣', music_week: '🎵',
+    influencer_hype: '📱', online_storm: '💬', award: '🏅', wildlife: '🦌'
+  };
+  
   let eventMsg = '';
-  if (data.event === 'rain') {
-    eventMsg = '🌧️ Regen';
-  } else if (data.event === 'festival') {
-    eventMsg = '🎉 Festival';
-  } else if (data.event === 'heatwave') {
-    eventMsg = '🔥 Hitzewelle';
+  if (events.length > 0) {
+    eventMsg = events.map(e => `${EVENT_ICONS[e] || ''} ${EVENT_NAMES[e] || e}`).join(', ');
   }
   
   if (eventMsg) {
-    showError(`Quartal ${data.quarter} beginnt mit ${eventMsg}!`);
+    showError(`Quartal ${data.quarter} beginnt mit: ${eventMsg}`);
   } else {
     showError(`Quartal ${data.quarter} beginnt!`);
   }
@@ -967,21 +977,37 @@ function updateGameUI() {
   document.getElementById('quarterVal').textContent = gameState.quarter;
   document.getElementById('roundVal').textContent = gameState.round;
   
-  const isHighSeason = gameState.quarter <= 2;
+  const isHighSeason = gameState.quarter === 2 || gameState.quarter === 3;
   document.getElementById('seasonVal').textContent = isHighSeason ? 'Haupt' : 'Neben';
   
   const eventBanner = document.getElementById('eventBanner');
-  if (gameState.event === 'rain') {
-    eventBanner.textContent = '🌧️ REGEN – Weniger Gäste in diesem Quartal!';
-    eventBanner.className = 'event-banner rain';
-    eventBanner.style.display = 'block';
-  } else if (gameState.event === 'festival') {
-    eventBanner.textContent = '🎉 FESTIVAL – Mehr Gäste und höhere Einnahmen!';
-    eventBanner.className = 'event-banner festival';
-    eventBanner.style.display = 'block';
-  } else if (gameState.event === 'heatwave') {
-    eventBanner.textContent = '🔥 HITZEWELLE – Erhöhter Wasserbedarf!';
-    eventBanner.className = 'event-banner heatwave';
+  const events = gameState.events || [];
+  
+  const EVENT_LABELS = {
+    rain: { text: '🌧️ REGEN – Weniger Gäste!', class: 'rain' },
+    storm: { text: '⛈️ STURM – Weniger Gäste!', class: 'rain' },
+    heatwave: { text: '🔥 HITZEWELLE – Mehr Wasserbedarf!', class: 'heatwave' },
+    cold: { text: '❄️ KÄLTE – Weniger Gäste!', class: 'rain' },
+    drought: { text: '🏜️ DÜRRE – Weniger Wasser!', class: 'rain' },
+    tourism_boom: { text: '📈 TOURISMUS-BOOM – Mehr Gäste!', class: 'festival' },
+    recession: { text: '📉 REZESSION – Weniger Gäste!', class: 'rain' },
+    luxury_trend: { text: '💎 LUXUS-TREND – Höhere Einnahmen!', class: 'festival' },
+    minimalism_trend: { text: '📦 MINIMALISMUS – Normale Preise', class: '' },
+    festival: { text: '🎉 FESTIVAL – Mehr Gäste!', class: 'festival' },
+    sports_event: { text: '🏆 SPORT-EVENT – Mehr Gäste!', class: 'festival' },
+    fishing_competition: { text: '🎣 ANGELWETTBEWERB – Mehr Gäste!', class: 'festival' },
+    music_week: { text: '🎵 MUSIK-WOCHE – Mehr Gäste!', class: 'festival' },
+    influencer_hype: { text: '📱 INFLUENCER – Mehr Gäste!', class: 'festival' },
+    online_storm: { text: '💬 ONLINE-STORM – Weniger Gäste!', class: 'rain' },
+    award: { text: '🏅 AUSZEICHNUNG – Mehr Gäste!', class: 'festival' },
+    wildlife: { text: '🦌 WILTIERE – Bonus-Einnahmen!', class: '' }
+  };
+  
+  if (events.length > 0) {
+    const eventTexts = events.map(e => EVENT_LABELS[e]?.text || e).join(' | ');
+    const eventClass = events.map(e => EVENT_LABELS[e]?.class || '').find(c => c) || '';
+    eventBanner.textContent = eventTexts;
+    eventBanner.className = `event-banner ${eventClass}`;
     eventBanner.style.display = 'block';
   } else {
     eventBanner.style.display = 'none';

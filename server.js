@@ -22,7 +22,68 @@ const NPC_NAMES = {
   Snobs: ['Graf von Luxus', 'Baronessin', 'Herzogin', 'Fürst', 'Gräfin', 'Herr von Obersee']
 };
 
+const EVENTS = {
+  weather: ['rain', 'storm', 'heatwave', 'cold', 'drought'],
+  economy: ['tourism_boom', 'recession', 'luxury_trend', 'minimalism_trend'],
+  local: ['festival', 'sports_event', 'fishing_competition', 'music_week'],
+  social: ['influencer_hype', 'online_storm', 'award', 'wildlife']
+};
+
+const EVENT_EFFECTS = {
+  rain: { npcMultiplier: 0.5, waterMultiplier: 1, moneyMultiplier: 1 },
+  storm: { npcMultiplier: 0.6, waterMultiplier: 1, moneyMultiplier: 0.8 },
+  heatwave: { npcMultiplier: 1.2, waterMultiplier: 2, moneyMultiplier: 1.2 },
+  cold: { npcMultiplier: 0.7, waterMultiplier: 1, moneyMultiplier: 0.9 },
+  drought: { npcMultiplier: 0.8, waterMultiplier: 0.5, moneyMultiplier: 0.9 },
+  tourism_boom: { npcMultiplier: 1.5, waterMultiplier: 1, moneyMultiplier: 1.3 },
+  recession: { npcMultiplier: 0.6, waterMultiplier: 1, moneyMultiplier: 0.7 },
+  luxury_trend: { npcMultiplier: 1.1, waterMultiplier: 1, moneyMultiplier: 1.4 },
+  minimalism_trend: { npcMultiplier: 1, waterMultiplier: 1, moneyMultiplier: 1 },
+  festival: { npcMultiplier: 1.4, waterMultiplier: 1.2, moneyMultiplier: 1.3 },
+  sports_event: { npcMultiplier: 1.3, waterMultiplier: 1.1, moneyMultiplier: 1.2 },
+  fishing_competition: { npcMultiplier: 1.2, waterMultiplier: 1, moneyMultiplier: 1.2 },
+  music_week: { npcMultiplier: 1.3, waterMultiplier: 1, moneyMultiplier: 1.2 },
+  influencer_hype: { npcMultiplier: 1.4, waterMultiplier: 1, moneyMultiplier: 1.3 },
+  online_storm: { npcMultiplier: 0.7, waterMultiplier: 1, moneyMultiplier: 0.8 },
+  award: { npcMultiplier: 1.2, waterMultiplier: 1, moneyMultiplier: 1.3 },
+  wildlife: { npcMultiplier: 1, waterMultiplier: 1, moneyMultiplier: 1.1 }
+};
+
 const NPC_TYPES = ['Hippies', 'Families', 'Snobs'];
+
+function isHighSeason(quarter) {
+  return quarter === 2 || quarter === 3;
+}
+
+function getEventsForQuarter(quarter) {
+  const eventsPerQuarter = (quarter === 1 || quarter === 4) ? 1 : 2;
+  const selectedEvents = [];
+  const categories = Object.keys(EVENTS);
+  
+  for (let i = 0; i < eventsPerQuarter; i++) {
+    const category = categories[Math.floor(Math.random() * categories.length)];
+    const events = EVENTS[category];
+    const event = events[Math.floor(Math.random() * events.length)];
+    if (!selectedEvents.includes(event)) {
+      selectedEvents.push(event);
+    }
+  }
+  
+  return selectedEvents;
+}
+
+function getEventEffects(events) {
+  const effects = { npcMultiplier: 1, waterMultiplier: 1, moneyMultiplier: 1 };
+  for (const event of events) {
+    const eventEffect = EVENT_EFFECTS[event];
+    if (eventEffect) {
+      effects.npcMultiplier *= eventEffect.npcMultiplier;
+      effects.waterMultiplier *= eventEffect.waterMultiplier;
+      effects.moneyMultiplier *= eventEffect.moneyMultiplier;
+    }
+  }
+  return effects;
+}
 
 const ASSETS = {
   tent: { name: 'Zelt', price: 50, space: 1, type: 'sleeping', capacity: 2 },
@@ -33,30 +94,30 @@ const ASSETS = {
   sportsfield: { name: 'Sportplatz', price: 250, space: 3, type: 'special', satisfies: ['Sports'] }
 };
 
-function generateNPC(quarter, isHighSeason, event = null) {
+function generateNPC(quarter, isHighSeason, eventEffects = null) {
   const type = NPC_TYPES[Math.floor(Math.random() * NPC_TYPES.length)];
   const names = NPC_NAMES[type];
   const name = names[Math.floor(Math.random() * names.length)];
   
   let baseGuests = type === 'Hippies' ? 2 : type === 'Families' ? 4 : 2;
-  if (event === 'festival') {
-    baseGuests = Math.floor(baseGuests * 1.5);
+  if (eventEffects) {
+    baseGuests = Math.floor(baseGuests * eventEffects.npcMultiplier);
   }
   const guests = baseGuests + Math.floor(Math.random() * 3);
   
   const nights = Math.floor(Math.random() * 3) + 1;
   
   let baseIncome = type === 'Hippies' ? 30 : type === 'Families' ? 80 : 120;
-  if (event === 'festival') {
-    baseIncome = Math.floor(baseIncome * 1.5);
+  if (eventEffects) {
+    baseIncome = Math.floor(baseIncome * eventEffects.moneyMultiplier);
   }
   const income = baseIncome * nights * guests;
   
   let electricity = guests * (type === 'Snobs' ? 3 : 1);
   let water = guests * (type === 'Families' ? 2 : 1);
   
-  if (event === 'heatwave') {
-    water = Math.floor(water * 1.5);
+  if (eventEffects) {
+    water = Math.floor(water * eventEffects.waterMultiplier);
   }
   
   let specialNeeds = [];
@@ -92,16 +153,16 @@ function createGameState() {
     npcs: [],
     currentPlayerIndex: 0,
     phase: 'lobby',
-    event: null,
+    events: [],
     turnAction: null
   };
 }
 
-function generateNPCsForQuarter(quarter, isHighSeason, event = null) {
+function generateNPCsForQuarter(quarter, isHighSeason, eventEffects = null) {
   const count = isHighSeason ? 4 : 2;
   let npcs = [];
   for (let i = 0; i < count; i++) {
-    npcs.push(generateNPC(quarter, isHighSeason, event));
+    npcs.push(generateNPC(quarter, isHighSeason, eventEffects));
   }
   return npcs;
 }
@@ -126,7 +187,7 @@ io.on('connection', (socket) => {
     };
     
     gameState.players.push(player);
-    gameState.npcs = generateNPCsForQuarter(1, true);
+    gameState.npcs = generateNPCsForQuarter(1, isHighSeason(1));
     
     lobbies.set(code, gameState);
     socket.join(code);
@@ -142,8 +203,8 @@ io.on('connection', (socket) => {
       socket.emit('error', 'Lobby nicht gefunden');
       return;
     }
-    if (gameState.players.length >= 6) {
-      socket.emit('error', 'Lobby ist voll');
+    if (gameState.players.length >= 4) {
+      socket.emit('error', 'Lobby ist voll (max. 4 Spieler)');
       return;
     }
     if (gameState.phase !== 'lobby') {
@@ -401,12 +462,13 @@ io.on('connection', (socket) => {
     if (gameState.currentPlayerIndex === 0) {
       gameState.round++;
       
-      const isHighSeason = gameState.quarter <= 2;
-      const eventMultiplier = gameState.event === 'rain' ? 0.5 : gameState.event === 'festival' ? 1.5 : 1;
+      const hs = isHighSeason(gameState.quarter);
+      const eventEffects = getEventEffects(gameState.events);
+      const npcMultiplier = eventEffects.npcMultiplier;
       
-      const newNpcCount = isHighSeason ? Math.floor(2 * eventMultiplier) + 1 : Math.floor(1 * eventMultiplier) + 1;
+      const newNpcCount = hs ? Math.floor(2 * npcMultiplier) + 1 : Math.floor(1 * npcMultiplier) + 1;
       for (let i = 0; i < newNpcCount; i++) {
-        gameState.npcs.push(generateNPC(gameState.quarter, isHighSeason, gameState.event));
+        gameState.npcs.push(generateNPC(gameState.quarter, hs, eventEffects));
       }
       gameState.npcs = gameState.npcs.filter(n => n.accepted || n.remainingNights === undefined || n.remainingNights > 0);
       
@@ -419,22 +481,12 @@ io.on('connection', (socket) => {
           gameState.year++;
         }
         
-        const events = [null, 'rain', 'festival', 'heatwave'];
-        const eventRoll = Math.random();
-        if (eventRoll < 0.2) {
-          gameState.event = 'rain';
-        } else if (eventRoll < 0.35) {
-          gameState.event = 'festival';
-        } else if (eventRoll < 0.45) {
-          gameState.event = 'heatwave';
-        } else {
-          gameState.event = null;
-        }
+        gameState.events = getEventsForQuarter(gameState.quarter);
         
         io.to(data.code).emit('quarterChanged', { 
           quarter: gameState.quarter, 
           year: gameState.year,
-          event: gameState.event
+          events: gameState.events
         });
       }
     }
