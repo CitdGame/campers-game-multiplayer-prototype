@@ -1,5 +1,8 @@
 # Game Design Document – _Campers_
 
+
+
+TEst Obsidian
 ## Executive Summary
 **Campers** ist ein rundenbasiertes Online-Multiplayer mit strategischen und wirtschaftlichen Mechaniken. Die Spieler:innen übernehmen die Leitung eines Campingplatzes, verwalten Ressourcen, bauen Schlafplätze aus, managen Gäste und konkurrieren um die meisten Siegespunkte am Ende einer Saison.
 
@@ -11,10 +14,8 @@
 - **Ziel:** Entwicklung eines prototypischen Core Games mit Erweiterungspotenzial für Spin-offs (z. B. Familienversion, digitale Umsetzung).
     
 ## Core Concept
-
 ### Concept Statement
 „Baue, erweitere und manage deinen Campingplatz, um Gäste zufrieden zu stellen, Einnahmen zu generieren und am Ende die meisten Siegespunkte zu sammeln.“    
-
 
 ### Player Experience and Game POV
 - Ziel: Am Ende des Spiels die meisten Siegespunkt haben
