@@ -50,11 +50,14 @@ Assets als Interface mit den Werten:
 
 
 Ressourcen:
-Aufgeteilt in kaufbare (Fläche) & generierbare (Geld, Strom & Wasser)Spieler können:
-Mit ausreichend Geld: 	- eine Fläche kaufen und die gesamt Fläche ihres Campingplatzes vergrößern.
+Aufgeteilt in kaufbare (Fläche) & generierbare (Geld, Strom & Wasser)
+
+Spieler können:
+Mit ausreichend Geld:  	- eine Fläche kaufen und die gesamt Fläche ihres Campingplatzes vergrößern.
 
 Mit ausreichend Geld & Fläche:
-Einen der 3 Asset typen kaufen & platzieren.NPC Anfragen sehen & diese, wenn sie die Bedürfnisse erfüllen können annehmen & einem den Bedürfnissen entsprechenden Schlafplatz zuweisen. Oder sie ablehnen.
+Einen der 3 Asset typen kaufen & platzieren. 
+NPC Anfragen sehen & diese, wenn sie die Bedürfnisse erfüllen können annehmen & einem den Bedürfnissen entsprechenden Schlafplatz zuweisen. Oder sie ablehnen.
 
 # Ereigniskarten-System
 
