@@ -1,128 +1,124 @@
 # Game Design Document – _Campers_
 
 ## Executive Summary
-
 **Campers** ist ein rundenbasiertes Online-Multiplayer mit strategischen und wirtschaftlichen Mechaniken. Die Spieler:innen übernehmen die Leitung eines Campingplatzes, verwalten Ressourcen, bauen Schlafplätze aus, managen Gäste und konkurrieren um die meisten Siegespunkte am Ende einer Saison.
 
-- **Genre:** Strategie, Simulation, Deck-Building, Brettspiel
+- **Genre:** Strategie, Simulation, Deck-Building 
 - **Spieleranzahl:** 2–4
 - **Dauer:** 70–150 Minuten
 - **Alter:** 14+
 - **Projektumfang:** Webgame mit Karten-, Token- und Ressourcenmanagement.
 - **Ziel:** Entwicklung eines prototypischen Core Games mit Erweiterungspotenzial für Spin-offs (z. B. Familienversion, digitale Umsetzung).
     
-
----
-
 ## Core Concept
 
 ### Concept Statement
-„Baue, erweitere und manage deinen Campingplatz, um Gäste zufrieden zu stellen, Einnahmen zu generieren und am Ende die meisten Siegespunkte zu sammeln.“
+„Baue, erweitere und manage deinen Campingplatz, um Gäste zufrieden zu stellen, Einnahmen zu generieren und am Ende die meisten Siegespunkte zu sammeln.“    
 
-### Genre(s)
-- Brettspiel
-- Strategie & Simulation
-- Wirtschaftsspiel
-- Deck-Building
-    
 
-### Target Audience
-- Vielspieler:innen mit Vorliebe für Management- und Wirtschaftssimulationen
-- Alter 14+
-- Gruppen von 2–4 Personen
-
-### Unique Selling Points
-- Ungewöhnliches Setting: Campingplatz-Management als Brettspiel
-- Mischung aus Ressourcenverwaltung, Deck-Building und Gäste-Management
-- Variable Gästetypen (Familien, Hippies, Snobs) mit unterschiedlichen Anforderungen
-- Flexibles Spielfeld mit Ausbau- und Erweiterungsmechaniken
-- Hoher Wiederspielwert durch NPC-Effekte und variierende Strategien
+### Player Experience and Game POV
+- Ziel: Am Ende des Spiels die meisten Siegespunkt haben
+- Spieler:innen erleben Spannung durch Ressourcenknappheit und Konkurrenz
+- Humorvolle Identifikation mit Gästen & Situationen
+- Mischung aus strategischer Planung und taktischen Reaktionen auf gezogene NPC-Karten
 
 ## Main Features
 
 ### Story
-Kein narratives Kampagnenspiel – stattdessen thematischer Rahmen: _„Wer schafft es, den attraktivsten Campingplatz der Saison aufzubauen?“_
+Das Spieljahr (12 Runden) wird in 4 Quartale à 3 Runden unterteilt 
+
+| Quartal | Saison      | Ereignisse   | Gästeaufkommen           |
+| ------- | ----------- | ------------ | ------------------------ |
+| Q1      | Nebensaison | 1 Ereignis   | -1 NPC-Karte pro Spieler |
+| Q2      | Hauptsaison | 2 Ereignisse | +1 NPC-Karte pro Spieler |
+| Q3      | Hauptsaison | 2 Ereignisse | +1 NPC-Karte pro Spieler |
+| Q4      | Nebensaison | 1 Ereignis   | -1 NPC-Karte pro Spieler |
+
+Dramaturgischer Verlauf: Aufbau → Boom → Peak → Abkühlung
+
+Dieses System erzeugt:
+- Strategiewechsel im Spielverlauf
+- Zyklische Ressourcenknappheit
+- Story-Momente am Tisch
+
+#### Ereigniskarten-System
+Grundprinzip: Ereignisse werden zu Beginn eines Quartals aufgedeckt
+- Sie gelten für 3 Runden
+- Sie betreffen alle Spieler gleichzeitig
+- Sie verändern Nachfrage, Ressourcen oder Asset-Werte
+
+Modularer Aufbau:
+- 12–16 Basiskarten
+- 10 Wetterkarten-Modul
+- 10 Wirtschafts-/Trendkarten-Modul
+- 6 High-Interaction-Karten (Abstimmungen)
+
+##### Beispiel-Ereignisse (siehe 0226_Erweiterung) 
+- Wetter
+- Dauerregen
+- Sturmwarnung
+- Hitzewelle
+- Kälteeinbruch
+- Dürre
+- Wirtschaft
+- Tourismusboom
+- Wirtschaftskrise
+- Luxus-Trend
+- Minimalismus-Trend
+- Regionale Events
+- Festival in der Nähe
+- Sportgroßevent
+- Angelwettbewerb
+- Indie-Musik-Woche
+- Soziale Dynamik
+- Influencer-Hype
+- Online-Shitstorm
+- Campingplatz-Auszeichnung
+- Wildtiere auf dem Platz
+
 
 ### Gameplay
-Rundenbasiertes Ressourcen- und Gäste-Management.  
-Eine Runde = ein Monat → 12 Runden = ein Spieljahr.
-
-#### Game Tools
-- Spielfeld mit Pool-Bereich (Ressourcen & Kartenstapel) und individuellen Spielplätzen
-- Kartenstapel: NPC-Karten, Gemeinschaftsflächen-Karten, Asset-Karten
-- Tokens & Marker: Wasser, Strom, Geld, Flächen-Erweiterungen
-- Shop-Register für Assets
+- Rundenbasiertes Ressourcen- und Gäste-Management.
 
 #### Core Game Loops
-1. Ziehe NPC-Karten (potenzielle Gäste)
+1. Am Anfang eines Zuges wird der NPC-Pool aufgefüllt (potenzielle Gäste)
 2. Führe bis zu 3 Aktionen aus:
     - **Bauen**: Assets errichten oder upgraden
     - **Kaufen**: Ressourcen erwerben
     - **Gästemanagement**: Buchungen annehmen, Gäste platzieren oder entfernen
 3. Am Rundenende: Einkommen durch aktive Gäste erhalten
 
-##### Mechanics
-- Ressourcenmanagement: Fläche, Wasser, Strom
-- Deck-Building: Gäste & NPC-Effekte
-- Infrastruktur-Ausbau: Schlafplätze & Gemeinschaftsflächen
-- Konkurrenzmechaniken: Limitierte Assets und Ressourcen → strategische Interaktion
+#### Game Feature
+##### NPCs:
+mandatory:
+- Namen
+- Typ // wie bisher (Hippies, Familien & Snobs)
+- angefragter Zeitraum	- Anzahl Gäste
+- Einkommen
+- Bedürfnisse (pro Nacht):
+-- Anzahl Schlafplätze
+-- Strombedarf
+-- Wasserbedarf
+- Sonderbedürfnisse:
+-- bestimmte Assets müssen auf dem Zeltplatz vorhanden sein
 
-#### Objectives and Progression
-- **Kurzfristig:** Ressourcen sichern, Gäste annehmen, Infrastruktur erweitern
-- **Mittelfristig:** Gästezufriedenheit maximieren, Einkommen steigern
-- **Langfristig:** Siegbedingungen erfüllen (Siegespunkte aus Geld + Gäste-Punkten)
+##### Assets:
+Assets als Interface mit den Werten:
+- Preis
+- Flächenbedarf
+3 Arten von Assets:- Buchbare Assets:
+	- Schlafplätze (bisher Zelte, Wohnwägen & Bungalows)
+- Ressourcen generierende Assets:
+    - Bisher Stromgenerator & Wassertank
+- Sonderbedürfnisse erfüllende Assets:
+    - Entwicklungsbeispiel: Sportplatz (Sonderbedürfnis mancher Familien)
+
+##### Ressourcen:
+Aufgeteilt in kaufbare (Fläche) & generierbare (Geld, Strom & Wasser)Spieler können:
+Mit ausreichend Geld: 	- eine Fläche kaufen und die gesamt Fläche ihres Campingplatzes vergrößern.
+
+Mit ausreichend Geld & Fläche: Einen der 3 Asset typen kaufen & platzieren.NPC Anfragen sehen & diese, wenn sie die Bedürfnisse erfüllen können annehmen & einem den Bedürfnissen entsprechenden Schlafplatz zuweisen. Oder sie ablehnen.
 
 
 
-### Visual Style
-**Design Pillar:** Humorvolle, zugängliche Simulation mit leicht ironischem Blick auf Camping-Kultur.
-- **Game Elements (Worldbuilding):** Campingplatz-Atmosphäre, Gästetypen als Archetypen (Familien, Hippies, Snobs), Ausbauoptionen (Zelt bis Luxus-Bungalow), Gemeinschaftsflächen (Sport, Lagerfeuer, Angeln).
-    
-- **Assets:**
-    
-    - Cartoon-Illustrationen für Karten & Board
-        
-    - Leichte, helle Farbpalette (Natur, Sommer)
-        
-    - Sound-Effekte optional für digitale Adaption (Vogelgezwitscher, Wasser, Gitarrenmusik)
-        
-
----
-
-## Product Design
-
-### Design Scope
-
-- Basisversion: 1 Brett, 160 NPC-Karten, 8 Gemeinschaftsflächen-Karten, 16 Flächen-Erweiterungen, diverse Tokens
-    
-- Erweiterungspotenzial: zusätzliche Gästetypen, Events, Festival-Module, digitale Adaption
-    
-
-### Format
-
-Physisches Brettspiel, optional mit Erweiterungsboxen.
-
-### Player Definition
-
-- Rollen: Campingplatz-Manager
-    
-- Ziel: Am Ende des Spieljahres die meisten Siegespunkte
-    
-
-### Player Experience and Game POV
-
-- Spieler:innen erleben Spannung durch Ressourcenknappheit und Konkurrenz
-    
-- Humorvolle Identifikation mit Gästen & Situationen
-    
-- Mischung aus strategischer Planung und taktischen Reaktionen auf gezogene NPC-Karten
-    
-
-### Monetization
-
-- Grundspiel (Retail)
-    
-- Erweiterungen: Neue Gästetypen, zusätzliche Assets, Event-Karten
-    
-- Lizenzierbar als digitale Version oder Spin-off-Kartenspiele
     
