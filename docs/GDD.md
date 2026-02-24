@@ -2,14 +2,13 @@
 
 ## Executive Summary
 
-**Campers** ist ein kompetitives, rundenbasiertes Brettspiel mit strategischen und wirtschaftlichen Mechaniken.  
-Die Spieler:innen übernehmen die Leitung eines Campingplatzes, verwalten Ressourcen, bauen Schlafplätze aus, managen Gäste und konkurrieren um die meisten Siegespunkte am Ende einer Saison.
+**Campers** ist ein rundenbasiertes Online-Multiplayer mit strategischen und wirtschaftlichen Mechaniken. Die Spieler:innen übernehmen die Leitung eines Campingplatzes, verwalten Ressourcen, bauen Schlafplätze aus, managen Gäste und konkurrieren um die meisten Siegespunkte am Ende einer Saison.
 
 - **Genre:** Strategie, Simulation, Deck-Building, Brettspiel
 - **Spieleranzahl:** 2–4
 - **Dauer:** 70–150 Minuten
 - **Alter:** 14+
-- **Projektumfang:** Klassisches Brettspiel mit Karten-, Token- und Ressourcenmanagement.
+- **Projektumfang:** Webgame mit Karten-, Token- und Ressourcenmanagement.
 - **Ziel:** Entwicklung eines prototypischen Core Games mit Erweiterungspotenzial für Spin-offs (z. B. Familienversion, digitale Umsetzung).
     
 
