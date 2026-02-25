@@ -6,6 +6,14 @@ const NPC_NAMES = {
 
 const NPC_TYPES = ['Hippies', 'Families', 'Snobs'];
 
+const GUEST_POINT_TYPES = ['generic', 'Hippies', 'Families', 'Snobs'];
+
+const PROMOTIONS = {
+  Hippies: { name: 'Hippie-Woche', cost: 100, yields: 1, type: 'Hippies' },
+  Families: { name: 'Familienaktion', cost: 150, yields: 1, type: 'Families' },
+  Snobs: { name: 'Luxus-Event', cost: 200, yields: 1, type: 'Snobs' }
+};
+
 const EVENTS = {
   weather: ['rain', 'storm', 'heatwave', 'drought', 'blackout'],
   economy: ['tourism_boom'],
@@ -69,6 +77,8 @@ const GAME_CONFIG = {
 module.exports = {
   NPC_NAMES,
   NPC_TYPES,
+  GUEST_POINT_TYPES,
+  PROMOTIONS,
   EVENTS,
   EVENT_EFFECTS,
   ASSETS,

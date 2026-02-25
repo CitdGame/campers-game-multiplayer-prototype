@@ -1,4 +1,4 @@
-const { NPC_NAMES, NPC_TYPES, EVENT_EFFECTS, ASSETS, GAME_CONFIG, SPECIAL_NEEDS, NPC_TIER_REQUIREMENTS, NPC_ASSET_GUEST_LIMITS } = require('./gameData');
+const { NPC_NAMES, NPC_TYPES, GUEST_POINT_TYPES, PROMOTIONS, EVENT_EFFECTS, ASSETS, GAME_CONFIG, SPECIAL_NEEDS, NPC_TIER_REQUIREMENTS, NPC_ASSET_GUEST_LIMITS } = require('./gameData');
 
 function isHighSeason(quarter) {
   return quarter === 2 || quarter === 3;
@@ -38,8 +38,8 @@ function generateId() {
   return Math.random().toString(36).substr(2, 9);
 }
 
-function generateNPC(quarter, isHighSeason, eventEffects = null) {
-  const type = NPC_TYPES[Math.floor(Math.random() * NPC_TYPES.length)];
+function generateNPC(quarter, isHighSeason, eventEffects = null, forcedType = null) {
+  const type = forcedType || NPC_TYPES[Math.floor(Math.random() * NPC_TYPES.length)];
   const names = NPC_NAMES[type];
   const name = names[Math.floor(Math.random() * names.length)];
   
@@ -147,7 +147,8 @@ function createPlayer(id, name, playerIndex) {
     electricity: GAME_CONFIG.initialElectricity,
     water: GAME_CONFIG.initialWater,
     assets: [],
-    score: 0
+    score: 0,
+    coins: { generic: 2, Hippies: 0, Families: 0, Snobs: 0 }
   };
 }
 

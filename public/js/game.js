@@ -211,6 +211,13 @@ function updateGameUI() {
   document.getElementById('electricVal').textContent = player.electricity;
   document.getElementById('waterVal').textContent = player.water;
   
+  // Update coin counts
+  const coins = player.coins || { generic: 0, Hippies: 0, Families: 0, Snobs: 0 };
+  document.getElementById('coinGeneric').textContent = coins.generic || 0;
+  document.getElementById('coinHippies').textContent = coins.Hippies || 0;
+  document.getElementById('coinFamilies').textContent = coins.Families || 0;
+  document.getElementById('coinSnobs').textContent = coins.Snobs || 0;
+  
   renderPlayerList();
   renderNPCList();
   renderSlots();
@@ -519,6 +526,14 @@ function closeSleepingSpotModal() {
 
 function rejectNPC(npcId) {
   socket.emit('rejectNPC', npcId);
+}
+
+function requestGuest(pointType) {
+  socket.emit('requestGuest', pointType);
+}
+
+function runPromotion(promotionType) {
+  socket.emit('runPromotion', promotionType);
 }
 
 function endTurn() {

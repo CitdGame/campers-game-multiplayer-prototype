@@ -110,16 +110,16 @@
     border-left: solid transparent;
     border-right: solid transparent;
     border-bottom: solid var(--green-dark);
-    position: relative;
   }
-  .tree-top::after {
-    content: '';
-    position: absolute;
-    width: 0; height: 0;
+  .tree-middle {
+    width: 0;
+    height: 0;
     border-left: solid transparent;
     border-right: solid transparent;
     border-bottom: solid var(--green-mid);
-    bottom: 0;
+    margin-top: -30px;
+    position: relative;
+    z-index: 1;
   }
   .tree-trunk {
     background: var(--brown);
@@ -128,13 +128,13 @@
 
   /* Varied trees */
   .t1 .tree-top { border-left-width: 22px; border-right-width: 22px; border-bottom-width: 55px; }
-  .t1 .tree-top::after { border-left-width: 18px; border-right-width: 18px; border-bottom-width: 40px; bottom: 10px; left: -18px; }
+  .t1 .tree-middle { border-left-width: 32px; border-right-width: 32px; border-bottom-width: 45px; }
   .t1 .tree-trunk { width: 10px; height: 20px; }
   .t2 .tree-top { border-left-width: 18px; border-right-width: 18px; border-bottom-width: 44px; }
-  .t2 .tree-top::after { border-left-width: 14px; border-right-width: 14px; border-bottom-width: 32px; bottom: 8px; left: -14px; }
+  .t2 .tree-middle { border-left-width: 26px; border-right-width: 26px; border-bottom-width: 36px; }
   .t2 .tree-trunk { width: 8px; height: 16px; }
   .t3 .tree-top { border-left-width: 28px; border-right-width: 28px; border-bottom-width: 70px; }
-  .t3 .tree-top::after { border-left-width: 22px; border-right-width: 22px; border-bottom-width: 50px; bottom: 15px; left: -22px; }
+  .t3 .tree-middle { border-left-width: 40px; border-right-width: 40px; border-bottom-width: 55px; }
   .t3 .tree-trunk { width: 13px; height: 26px; }
 
   /* Grass stripe */
@@ -676,7 +676,7 @@ for (let i = 0; i < 22; i++) {
   const div = document.createElement('div');
   div.className = `tree ${type}`;
   div.style.cssText = `transform: scale(${scale}); margin-left: ${ml}px; margin-right: ${Math.random()*10}px;`;
-  div.innerHTML = `<div class="tree-top"></div><div class="tree-trunk"></div>`;
+  div.innerHTML = `<div class="tree-top"></div><div class="tree-middle"></div><div class="tree-trunk"></div>`;
   treesEl.appendChild(div);
 }
 

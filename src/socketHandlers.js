@@ -11,6 +11,8 @@ const {
   GAME_CONFIG
 } = require('./gameLogic');
 
+const { GUEST_POINT_TYPES, PROMOTIONS } = require('./gameData');
+
 // Use global to avoid module caching issues
 global.gameLobbies = global.gameLobbies || new Map();
 global.gamePlayers = global.gamePlayers || new Map();
@@ -44,15 +46,6 @@ function setupSocketHandlers(io) {
       const player = createPlayer(socket.id, playerName || 'Du', 0);
       gameState.players.push(player);
       
-      const eventEffects = getEventEffects(gameState.events);
-      const hs = isHighSeason(1);
-      const npcMultiplier = eventEffects.npcMultiplier || 1;
-      const initialNpcCount = Math.max(3, Math.round((hs ? 4 : 3) * npcMultiplier));
-      
-      for (let i = 0; i < initialNpcCount; i++) {
-        gameState.npcs.push(generateNPC(1, hs, eventEffects));
-      }
-      
       lobbies.set(code, gameState);
       console.log('Stored', code, 'Map now:', Array.from(lobbies.keys()));
       socket.join(code);
@@ -76,17 +69,6 @@ function setupSocketHandlers(io) {
       
       const player = createPlayer(socket.id, playerName, 0);
       gameState.players.push(player);
-      
-      // Generate initial NPCs with event effects (more at start)
-      const eventEffects = getEventEffects(gameState.events);
-      const hs = isHighSeason(1);
-      const npcMultiplier = eventEffects.npcMultiplier || 1;
-      const baseCount = hs ? 3 : 2;
-      const initialNpcCount = Math.max(2, Math.round(baseCount * npcMultiplier));
-      
-      for (let i = 0; i < initialNpcCount; i++) {
-        gameState.npcs.push(generateNPC(1, hs, eventEffects));
-      }
       
       lobbies.set(code, gameState);
       socket.join(code);
@@ -478,18 +460,10 @@ function setupSocketHandlers(io) {
       player.electricity += electricityGain;
       player.water += waterGain;
       
-      // Add new NPCs each turn based on season and events
-      const hs = isHighSeason(gameState.quarter);
-      const npcMultiplier = eventEffects.npcMultiplier || 1;
+      // Give 2 generic coins each turn (players use coins to request guests)
+      player.coins.generic = (player.coins.generic || 0) + 2;
       
-      // Base: 2 NPCs high season, 1 NPC low season
-      // Then apply event multiplier
-      let baseCount = hs ? 2 : 1;
-      let newNpcCount = Math.max(1, Math.round(baseCount * npcMultiplier));
-      
-      for (let i = 0; i < newNpcCount; i++) {
-        gameState.npcs.push(generateNPC(gameState.quarter, hs, eventEffects));
-      }
+      // Clean up NPCs that have completed their stay (move them to available pool)
       gameState.npcs = gameState.npcs.filter(n => n.accepted || n.remainingNights === undefined || n.remainingNights > 0);
       
       gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
@@ -515,6 +489,78 @@ function setupSocketHandlers(io) {
           });
         }
       }
+      
+      io.to(data.code).emit('gameStateUpdated', gameState);
+    });
+
+    socket.on('requestGuest', (pointType) => {
+      const data = players.get(socket.id);
+      if (!data) return;
+      
+      const gameState = lobbies.get(data.code);
+      if (!gameState) return;
+      
+      const player = gameState.players[data.playerIndex];
+      if (!player) return;
+      
+      if (gameState.currentPlayerIndex !== data.playerIndex) {
+        socket.emit('error', 'Nicht dein Zug');
+        return;
+      }
+      
+      // Validate point type
+      const validTypes = ['generic', 'Hippies', 'Families', 'Snobs'];
+      if (!validTypes.includes(pointType)) {
+        socket.emit('error', 'Ungültiger Münztyp');
+        return;
+      }
+      
+      // Check if player has the coin
+      if ((player.coins[pointType] || 0) <= 0) {
+        socket.emit('error', `Keine ${pointType === 'generic' ? 'generischen' : pointType + '-'}Münzen verfügbar`);
+        return;
+      }
+      
+      // Use the coin
+      player.coins[pointType]--;
+      
+      // Generate NPC (forced type unless generic)
+      const forcedType = pointType === 'generic' ? null : pointType;
+      const hs = isHighSeason(gameState.quarter);
+      const npc = generateNPC(gameState.quarter, hs, getEventEffects(gameState.events), forcedType);
+      gameState.npcs.push(npc);
+      
+      io.to(data.code).emit('gameStateUpdated', gameState);
+    });
+
+    socket.on('runPromotion', (promotionType) => {
+      const data = players.get(socket.id);
+      if (!data) return;
+      
+      const gameState = lobbies.get(data.code);
+      if (!gameState) return;
+      
+      const player = gameState.players[data.playerIndex];
+      if (!player) return;
+      
+      if (gameState.currentPlayerIndex !== data.playerIndex) {
+        socket.emit('error', 'Nicht dein Zug');
+        return;
+      }
+      
+      const promotion = PROMOTIONS[promotionType];
+      if (!promotion) {
+        socket.emit('error', 'Ungültige Promotion');
+        return;
+      }
+      
+      if (player.money < promotion.cost) {
+        socket.emit('error', 'Nicht genug Geld');
+        return;
+      }
+      
+      player.money -= promotion.cost;
+      player.coins[promotion.type] = (player.coins[promotion.type] || 0) + promotion.yields;
       
       io.to(data.code).emit('gameStateUpdated', gameState);
     });

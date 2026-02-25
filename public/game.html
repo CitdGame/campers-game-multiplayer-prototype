@@ -102,7 +102,22 @@
       <div>
         <div class="panel">
           <div class="panel-title">👥 Gäste-Anfragen</div>
-          <div class="npc-list" id="npcList"></div>
+          <div style="margin-top:10px;font-weight:700;font-size:13px;color:var(--green-dark);">🪙 Münzen (verfügbar)</div>
+          <div class="assets-grid" style="margin-top:8px;">
+            <button class="asset-btn" onclick="requestGuest('generic')"><span class="icon">🪙</span><span class="name">Generisch</span><span class="price" id="coinGeneric">2</span><span class="space">Beliebig</span></button>
+            <button class="asset-btn" onclick="requestGuest('Hippies')"><span class="icon">🌿</span><span class="name">Hippie</span><span class="price" id="coinHippies">0</span><span class="space">Nur Hippies</span></button>
+            <button class="asset-btn" onclick="requestGuest('Families')"><span class="icon">👨‍👩‍👧‍👦</span><span class="name">Familie</span><span class="price" id="coinFamilies">0</span><span class="space">Nur Familien</span></button>
+            <button class="asset-btn" onclick="requestGuest('Snobs')"><span class="icon">👑</span><span class="name">Snob</span><span class="price" id="coinSnobs">0</span><span class="space">Nur Snobs</span></button>
+          </div>
+          
+          <div style="margin-top:15px;font-weight:700;font-size:13px;color:var(--green-dark);">📢 Promotionen (Münzen verdienen)</div>
+          <div class="assets-grid" style="margin-top:8px;">
+            <button class="asset-btn" onclick="runPromotion('Hippies')"><span class="icon">🌿</span><span class="name">Hippie-Woche</span><span class="price">100€</span><span class="space">+1 Hippie</span></button>
+            <button class="asset-btn" onclick="runPromotion('Families')"><span class="icon">👨‍👩‍👧‍👦</span><span class="name">Familienaktion</span><span class="price">150€</span><span class="space">+1 Familie</span></button>
+            <button class="asset-btn" onclick="runPromotion('Snobs')"><span class="icon">👑</span><span class="name">Luxus-Event</span><span class="price">200€</span><span class="space">+1 Snob</span></button>
+          </div>
+          
+          <div class="npc-list" id="npcList" style="margin-top:15px;"></div>
         </div>
         <div class="panel" style="margin-top: 20px;">
           <button class="btn btn-orange" style="width: 100%; font-size: 20px;" id="endTurnBtn" onclick="endTurn()">✅ Zug beenden</button>
@@ -135,5 +150,22 @@
   </div>
 
   <script src="/js/game.js"></script>
+  <script>
+    // === GENERATE TREES ===
+    const treesEl = document.getElementById('trees');
+    if (treesEl) {
+      const treeTypes = ['t1','t2','t3'];
+      for (let i = 0; i < 22; i++) {
+        const type = treeTypes[Math.floor(Math.random() * 3)];
+        const scale = 0.7 + Math.random() * 0.6;
+        const ml = i === 0 ? 0 : -8 + Math.random() * 30;
+        const div = document.createElement('div');
+        div.className = 'tree ' + type;
+        div.style.cssText = 'transform: scale(' + scale + '); margin-left: ' + ml + 'px; margin-right: ' + (Math.random()*10) + 'px;';
+        div.innerHTML = '<div class="tree-top"></div><div class="tree-middle"></div><div class="tree-trunk"></div>';
+        treesEl.appendChild(div);
+      }
+    }
+  </script>
 </body>
 </html>
