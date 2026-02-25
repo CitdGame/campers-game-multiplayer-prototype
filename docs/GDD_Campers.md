@@ -101,7 +101,8 @@ Modularer Aufbau:
 <img width="894" height="680" alt="Bildschirmfoto 2026-02-24 um 18 47 44" src="https://github.com/user-attachments/assets/d4c6deb0-9745-4553-b04e-936323af41ea" />
 
 #### Game Feature
-![Campers (2)](https://github.com/user-attachments/assets/eb6180d2-7725-4baa-85ca-18f7c898e270)
+
+![Campers - Frame 2](https://github.com/user-attachments/assets/01dcb53a-baee-4376-9b88-0d3e48cdfda2)
 
 ##### NPCs:
 mandatory:
