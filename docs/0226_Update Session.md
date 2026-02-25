@@ -24,4 +24,4 @@
 
 ### Themenspeicher
 - Assest als Erweiterungen bauen 
-	- Erst Zelt, dann Wohnwagen, dann Bugalo
+	- Erst Zelt, dann Caravan, dann Bugalow

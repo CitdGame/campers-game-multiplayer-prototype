@@ -46,7 +46,7 @@ Der Server startet auf `http://localhost:3000`.
 1. **Fläche kaufen** (+5 für 100€)
 2. **Assets bauen**:
    - ⛺ Zelt (50€) - 2 Pers.
-   - 🚐 Wohnwagen (150€) - 4 Pers.
+   - 🚐 Caravan (150€) - 4 Pers.
    - 🏠 Bungalow (300€) - 6 Pers.
    - ⚡ Generator (200€) - +5 Strom
    - 💧 Wassertank (150€) - +5 Wasser

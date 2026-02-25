@@ -51,7 +51,7 @@ Modularer Aufbau:
 - Z Wirtschafts-/Trendkarten-Modul
 - W High-Interaction-Karten (Abstimmungen)
 
-##### Entwicklungs-Ereignisse (siehe 0226_Erweiterung für mehr) 
+##### Entwicklungs-Ereignisse // (siehe 0226_Erweiterung für mehr aber erstmal ignorieren) 
 - Dauerregen:
     - Es regnet in Strömen und für diese Saison ist kein Ende in sicht..
     Effekt:
@@ -102,8 +102,10 @@ Modularer Aufbau:
 mandatory:
 - Namen
 - Typ // wie bisher (Hippies, Familien & Snobs)
-- angefragter Zeitraum	- Anzahl Gäste
-- Einkommen
+- angefragter Zeitraum	
+- Anzahl Gäste
+- Einkommen/Nacht
+- Einkommen gesamt
 - Bedürfnisse (pro Nacht):
 -- Anzahl Schlafplätze
 -- Strombedarf
@@ -118,9 +120,9 @@ Assets als Interface mit den Werten:
 3 Arten von Assets:
 - Buchbare Assets:
 	- Schlafplätze:
-        - Zelt (upgradebar auf Glamping-Zelt)
-        - Wohnwagen
-        - Bungalow (upgradebar auf Luxus-Bungalow)
+        - Zelt (2 Personen) (upgradebar auf Glamping-Zelt (4 Personen))
+        - Caravan (4 Personen)
+        - Bungalow (6 Personen) (upgradebar auf Luxus-Bungalow (8 Personen) )
 - Ressourcen generierende Assets:
     - Bisher Stromgenerator & Wassertank
 - Sonderbedürfnisse erfüllende Assets:
@@ -130,9 +132,9 @@ Assets als Interface mit den Werten:
     - Open-Air Bühne (Sonderbedürfnis mancher Hippies & Snobs)
 
 ###### NPC-Schlafplatz-Logik:
-**Hippies** können Anfragen stellen für: Zelte, Wohnwägen oder Bungalows.
-**Familien** können Anfragen stellen für: Zelte, Wohnwägen oder Bungalows.
-**Snobs** können Anfragen stellen für: Glamping-Zelte, Bungalows oder Luxus-Bungalows.
+**Hippies** können Anfragen stellen für: Zelte (nicht mehr als 2 Personen), Caravans (nicht mehr als 4 Personen) oder Bungalows (nicht mehr als 6 Personen).
+**Familien** können Anfragen stellen für: Glamping-Zelte (nicht mehr als 4 Personen), Caravans (nicht mehr als 4 Personen) oder Bungalows (nicht mehr als 6 Personen).
+**Snobs** können Anfragen stellen für: Glamping-Zelte (nicht mehr als 2 Personen), Bungalows (nicht mehr als 4 Personen) oder Luxus-Bungalows (nicht mehr als 6 Personen).
 
 ##### Ressourcen:
 Aufgeteilt in kaufbare (Fläche) & generierbare (Geld, Strom & Wasser)

@@ -42,7 +42,7 @@ Assets als Interface mit den Werten:
 - Preis
 - Flächenbedarf
 3 Arten von Assets:- Buchbare Assets:
-	- Schlafplätze (bisher Zelte, Wohnwägen & Bungalows)
+	- Schlafplätze (bisher Zelte, Caravans & Bungalows)
 - Ressourcen generierende Assets:
     - Bisher Stromgenerator & Wassertank
 - Sonderbedürfnisse erfüllende Assets:

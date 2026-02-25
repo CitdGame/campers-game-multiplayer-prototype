@@ -187,23 +187,13 @@ function updateGameUI() {
   const events = gameState.events || [];
   
   const EVENT_LABELS = {
-    rain: { text: '🌧️ REGEN – Weniger Gäste!', class: 'rain' },
-    storm: { text: '⛈️ STURM – Weniger Gäste!', class: 'rain' },
+    rain: { text: '🌧️ DAUERREGEN – Weniger Gäste!', class: 'rain' },
+    storm: { text: '⛈️ STURMWARNUNG – Keine Zelte!', class: 'rain' },
     heatwave: { text: '🔥 HITZEWELLE – Mehr Wasserbedarf!', class: 'heatwave' },
-    cold: { text: '❄️ KÄLTE – Weniger Gäste!', class: 'rain' },
-    drought: { text: '🏜️ DÜRRE – Weniger Wasser!', class: 'rain' },
+    drought: { text: '🏜️ DÜRRE – Kein Wasser!', class: 'rain' },
+    blackout: { text: '⚡ BLACKOUT – Kein Strom!', class: 'rain' },
     tourism_boom: { text: '📈 TOURISMUS-BOOM – Mehr Gäste!', class: 'festival' },
-    recession: { text: '📉 REZESSION – Weniger Gäste!', class: 'rain' },
-    luxury_trend: { text: '💎 LUXUS-TREND – Höhere Einnahmen!', class: 'festival' },
-    minimalism_trend: { text: '📦 MINIMALISMUS – Normale Preise', class: '' },
-    festival: { text: '🎉 FESTIVAL – Mehr Gäste!', class: 'festival' },
-    sports_event: { text: '🏆 SPORT-EVENT – Mehr Gäste!', class: 'festival' },
-    fishing_competition: { text: '🎣 ANGELWETTBEWERB – Mehr Gäste!', class: 'festival' },
-    music_week: { text: '🎵 MUSIK-WOCHE – Mehr Gäste!', class: 'festival' },
-    influencer_hype: { text: '📱 INFLUENCER – Mehr Gäste!', class: 'festival' },
-    online_storm: { text: '💬 ONLINE-STORM – Weniger Gäste!', class: 'rain' },
-    award: { text: '🏅 AUSZEICHNUNG – Mehr Gäste!', class: 'festival' },
-    wildlife: { text: '🦌 WILTIERE – Bonus-Einnahmen!', class: '' }
+    festival: { text: '🎉 FESTIVAL – Zelte bevorzugt!', class: 'festival' }
   };
   
   if (events.length > 0) {
@@ -226,20 +216,28 @@ function updateGameUI() {
   if (player.assets.length === 0) {
     ownedAssets.innerHTML = '<span style="color:#888;font-size:12px;">Noch keine Assets</span>';
   } else {
+    const UPGRADES = { tent: { to: 'glamping', cost: 150, name: 'Glamping-Zelt', icon: '🏕️', capacity: 4 }, bungalow: { to: 'luxurybungalow', cost: 300, name: 'Luxus-Bungalow', icon: '🏰', capacity: 8 } };
+    const ASSET_ICONS = { tent: '⛺', glamping: '🏕️', caravan: '🚐', bungalow: '🏠', luxurybungalow: '🏰', generator: '⚡', watertank: '💧', sportsfield: '⚽', campfire: '🔥', sauna: '🧖', stage: '🎭' };
+    
     ownedAssets.innerHTML = player.assets.map(a => {
-      if (a.type === 'sleeping') {
-        const currentGuests = a.guests?.length || 0;
+      if (a.assetType && ['tent', 'glamping', 'caravan', 'bungalow', 'luxurybungalow'].includes(a.assetType)) {
+        const currentGuests = a.guestCount || 0;
         const isOccupied = currentGuests > 0;
-        const guestInfo = isOccupied ? a.guests.map(g => `<div style="font-size:10px;color:#666;">${g.name} (${g.remainingNights} Nächte)</div>`).join('') : '';
+        const guestInfo = isOccupied ? `<div style="font-size:10px;color:#666;">${currentGuests} Gäste (${a.remainingNights} Nächte)</div>` : '';
+        const upgrade = UPGRADES[a.assetType];
+        const canUpgrade = upgrade && !isOccupied && player.money >= upgrade.cost;
+        const upgradeBtn = upgrade ? `<button class="btn btn-orange" style="font-size:10px;padding:2px 6px;margin-top:4px;" onclick="upgradeAsset('${a.id}')">⬆️ ${upgrade.name} (${upgrade.cost}€)</button>` : '';
+        
         return `
           <div class="owned-asset" style="${isOccupied ? 'background:#ffeaa7;' : ''}">
-            <div style="font-size:20px;">🛏️</div>
+            <div style="font-size:20px;">${ASSET_ICONS[a.assetType] || '🛏️'}</div>
             <div style="flex:1;">
               <div style="font-weight:700;font-size:13px;">${a.name}</div>
               <div style="font-size:11px;color:${isOccupied ? '#e67e22' : '#27ae60'};">
                 ${currentGuests}/${a.capacity} belegt
               </div>
               ${guestInfo}
+              ${upgradeBtn}
             </div>
           </div>
         `;
@@ -300,6 +298,9 @@ function renderNPCList() {
     return;
   }
   
+  const TIER_ICONS = { tent: '⛺', glamping: '🏕️', caravan: '🚐', bungalow: '🏠', luxurybungalow: '🏰' };
+  const NEED_ICONS = { Sports: '⚽', Campfire: '🔥', Sauna: '🧖', Stage: '🎭' };
+  
   container.innerHTML = availableNPCs.map(npc => `
     <div class="npc-card">
       <div class="npc-header">
@@ -316,7 +317,10 @@ function renderNPCList() {
         <div class="npc-detail"><div class="val">⚡ ${npc.needs.electricity}</div><div class="lbl">Strom</div></div>
         <div class="npc-detail"><div class="val">💧 ${npc.needs.water}</div><div class="lbl">Wasser</div></div>
       </div>
-      ${npc.specialNeeds.length > 0 ? `<div class="npc-special">✨ Benötigt: ${npc.specialNeeds.join(', ')}</div>` : ''}
+      <div class="npc-details">
+        <div class="npc-detail"><div class="val">${TIER_ICONS[npc.tierRequirement] || '🛏️'}</div><div class="lbl">${npc.tierRequirement || 'Zelt'}</div></div>
+      </div>
+      ${npc.specialNeeds.length > 0 ? `<div class="npc-special">✨ ${npc.specialNeeds.map(n => NEED_ICONS[n] || '' + ' ' + n).join(', ')}</div>` : ''}
       <div class="npc-actions">
         <button class="btn btn-green" onclick="acceptNPC('${npc.id}')">✓ Annehmen</button>
         <button class="btn btn-red" onclick="rejectNPC('${npc.id}')">✗ Ablehnen</button>
@@ -333,15 +337,75 @@ function buyAsset(type) {
   socket.emit('buyAsset', type);
 }
 
+function upgradeAsset(assetId) {
+  socket.emit('upgradeAsset', assetId);
+}
+
 function acceptNPC(npcId) {
   const npc = gameState.npcs.find(n => n.id === npcId);
   if (!npc) return;
   
   const player = gameState.players[myPlayerIndex];
-  const sleepingAssets = player.assets.filter(a => a.type === 'sleeping');
+  const sleepingAssets = player.assets.filter(a => a.assetType && ['tent', 'glamping', 'caravan', 'bungalow', 'luxurybungalow'].includes(a.assetType));
   
   if (sleepingAssets.length === 0) {
-    showError('Du hast keine Schlafplätze! Baue zuerst Zelte, Wohnwägen oder Bungalows.');
+    showError('Du hast keine Schlafplätze! Baue zuerst Zelte, Caravans oder Bungalows.');
+    return;
+  }
+  
+  const tierRequirements = { tent: 0, glamping: 1, caravan: 2, bungalow: 3, luxurybungalow: 4 };
+  const npcTierLevel = tierRequirements[npc.tierRequirement] || 0;
+  
+  // Check current events for tier preferences
+  const events = gameState.events || [];
+  const EVENT_TIER_EFFECTS = {
+    storm: { dislikedTier: 'tent' },
+    festival: { preferredTier: 'tent' }
+  };
+  let currentPreferredTier = null;
+  let currentDislikedTier = null;
+  for (const event of events) {
+    if (EVENT_TIER_EFFECTS[event]?.preferredTier) currentPreferredTier = EVENT_TIER_EFFECTS[event].preferredTier;
+    if (EVENT_TIER_EFFECTS[event]?.dislikedTier) currentDislikedTier = EVENT_TIER_EFFECTS[event].dislikedTier;
+  }
+  
+  // Guest limits per NPC type per asset type from GDD
+  const NPC_GUEST_LIMITS = {
+    Hippies: { tent: 2, caravan: 4, bungalow: 6 },
+    Families: { glamping: 4, caravan: 4, bungalow: 6 },
+    Snobs: { glamping: 2, bungalow: 4, luxurybungalow: 6 }
+  };
+  const maxGuestsForThisNPC = NPC_GUEST_LIMITS[npc.type]?.[npc.tierRequirement] || 999;
+  
+  let tierEligibleAssets = sleepingAssets.filter(a => {
+    const assetTierLevel = tierRequirements[a.assetType] || 0;
+    return assetTierLevel >= npcTierLevel;
+  });
+  
+  // Filter by event-based preferences
+  if (currentDislikedTier) {
+    const before = tierEligibleAssets.length;
+    tierEligibleAssets = tierEligibleAssets.filter(a => a.type !== currentDislikedTier);
+    if (tierEligibleAssets.length === 0 && before > 0) {
+      showError(`Bei Sturm können keine Zelte verwendet werden!`);
+      return;
+    }
+  }
+  
+  const hasSpecialAssets = npc.specialNeeds.every(need => 
+    player.assets.some(a => a.satisfies?.includes(need))
+  );
+  
+  if (!hasSpecialAssets) {
+    const missingNeeds = npc.specialNeeds.filter(need => 
+      !player.assets.some(a => a.satisfies?.includes(need))
+    );
+    showError(`Fehlende Einrichtungen: ${missingNeeds.join(', ')}`);
+    return;
+  }
+  
+  if (tierEligibleAssets.length === 0) {
+    showError(`Benötige ${npc.tierRequirement} (deine: ${sleepingAssets.map(a => a.type).join(', ') || 'keine'})`);
     return;
   }
   
@@ -349,22 +413,25 @@ function acceptNPC(npcId) {
   document.getElementById('selectedNpcGuests').textContent = npc.guests;
   
   const spotsList = document.getElementById('sleepingSpotsList');
-  spotsList.innerHTML = sleepingAssets.map(asset => {
-    const currentGuests = asset.guests?.length || 0;
-    const available = asset.capacity - currentGuests;
+  spotsList.innerHTML = tierEligibleAssets.map(asset => {
+    const currentGuests = asset.guestCount || 0;
+    const maxAllowedForNPC = NPC_GUEST_LIMITS[npc.type]?.[asset.assetType] || asset.capacity;
+    const available = maxAllowedForNPC - currentGuests;
     const canFit = available >= npc.guests;
     const hasEnoughResources = player.electricity >= npc.needs.electricity && player.water >= npc.needs.water;
     const isDisabled = !canFit || !hasEnoughResources;
     
     let guestInfo = '';
-    if (asset.guests && asset.guests.length > 0) {
-      guestInfo = `<div class="spot-guests">Belegt: ${asset.guests.map(g => `${g.name} (${g.remainingNacht})`).join(', ')}</div>`;
+    if (asset.guestCount && asset.guestCount > 0) {
+      guestInfo = `<div class="spot-guests">Belegt: ${asset.guestCount} Gäste (${asset.remainingNights} Nächte)</div>`;
     }
+    
+    const assetIcons = { tent: '⛺', glamping: '🏕️', caravan: '🚐', bungalow: '🏠', luxurybungalow: '🏰' };
     
     return `
       <div class="sleeping-spot-option ${isDisabled ? 'disabled' : ''}" onclick="${isDisabled ? '' : `selectSleepingSpot('${npcId}', '${asset.id}')`}">
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:24px;">🛏️</span>
+          <span style="font-size:24px;">${assetIcons[asset.assetType] || '🛏️'}</span>
           <div>
             <div class="spot-name">${asset.name}</div>
             <div class="spot-capacity">Kapazität: ${asset.capacity} | Frei: ${available}</div>

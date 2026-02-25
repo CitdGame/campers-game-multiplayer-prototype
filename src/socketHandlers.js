@@ -194,12 +194,74 @@ function setupSocketHandlers(io) {
       
       player.money -= asset.price;
       player.usedSpace += asset.space;
-      player.assets.push({ ...asset, id: Math.random().toString(36).substr(2, 9) });
+      player.assets.push({ ...asset, assetType: assetType, id: Math.random().toString(36).substr(2, 9) });
       
       if (asset.produces) {
         if (asset.produces.electricity) player.electricity += asset.produces.electricity;
         if (asset.produces.water) player.water += asset.produces.water;
       }
+      
+      io.to(data.code).emit('gameStateUpdated', gameState);
+    });
+
+    socket.on('upgradeAsset', (assetId) => {
+      const data = players.get(socket.id);
+      if (!data) return;
+      
+      const gameState = lobbies.get(data.code);
+      if (!gameState) return;
+      
+      const player = gameState.players[data.playerIndex];
+      if (!player) return;
+      
+      if (gameState.currentPlayerIndex !== data.playerIndex) {
+        socket.emit('error', 'Nicht dein Zug');
+        return;
+      }
+      
+      const asset = player.assets.find(a => a.id === assetId);
+      if (!asset || !asset.assetType || !['tent', 'glamping', 'caravan', 'bungalow', 'luxurybungalow'].includes(asset.assetType)) {
+        socket.emit('error', 'Ungültiges Asset');
+        return;
+      }
+      
+      if (asset.guestCount && asset.guestCount > 0) {
+        socket.emit('error', 'Asset ist belegt, Upgrade nicht möglich');
+        return;
+      }
+      
+      const UPGRADES = { tent: { to: 'glamping', cost: 150 }, bungalow: { to: 'luxurybungalow', cost: 300 } };
+      const upgrade = UPGRADES[asset.assetType];
+      if (!upgrade) {
+        socket.emit('error', 'Dieses Asset kann nicht upgegraded werden');
+        return;
+      }
+      
+      if (player.money < upgrade.cost) {
+        socket.emit('error', 'Nicht genug Geld');
+        return;
+      }
+      
+      const newAsset = getAssetByType(upgrade.to);
+      if (!newAsset) {
+        socket.emit('error', 'Upgrade-Ziel nicht gefunden');
+        return;
+      }
+      
+      const spaceDiff = newAsset.space - asset.space;
+      if (spaceDiff > 0 && player.space - player.usedSpace < spaceDiff) {
+        socket.emit('error', 'Nicht genug Fläche');
+        return;
+      }
+      
+      player.money -= upgrade.cost;
+      player.usedSpace += spaceDiff;
+      
+      asset.type = newAsset.type;
+      asset.assetType = upgrade.to;
+      asset.name = newAsset.name;
+      asset.capacity = newAsset.capacity;
+      asset.space = newAsset.space;
       
       io.to(data.code).emit('gameStateUpdated', gameState);
     });
@@ -231,7 +293,7 @@ function setupSocketHandlers(io) {
       }
       
       const asset = player.assets.find(a => a.id === assetId);
-      if (!asset || asset.type !== 'sleeping') {
+      if (!asset || !asset.assetType || !['tent', 'glamping', 'caravan', 'bungalow', 'luxurybungalow'].includes(asset.assetType)) {
         socket.emit('error', 'Ungültiger Schlafplatz');
         return;
       }
@@ -269,13 +331,10 @@ function setupSocketHandlers(io) {
       npc.assignedAssetId = assetId;
       npc.remainingNights = npc.nights;
       
-      if (!asset.guests) asset.guests = [];
-      asset.guests.push({
-        npcId: npc.id,
-        name: npc.name,
-        guests: npc.guests,
-        remainingNights: npc.nights
-      });
+      if (!asset.guestCount) asset.guestCount = 0;
+      asset.guestCount += npc.guests;
+      asset.remainingNights = npc.nights;
+      asset.incomePerNight = (asset.incomePerNight || 0) + (npc.income / npc.nights);
       
       player.score += npc.income;
       
@@ -325,11 +384,21 @@ function setupSocketHandlers(io) {
       player.money += roundIncome;
       
       for (const asset of player.assets) {
-        if (asset.type === 'sleeping' && asset.guests) {
-          for (const guest of asset.guests) {
-            guest.remainingNights--;
+        if (asset.assetType && ['tent', 'glamping', 'caravan', 'bungalow', 'luxurybungalow'].includes(asset.assetType)) {
+          if (asset.remainingNights > 0) {
+            asset.remainingNights--;
+            if (asset.remainingNights <= 0) {
+              asset.guestCount = 0;
+              asset.remainingNights = 0;
+            }
           }
-          asset.guests = asset.guests.filter(g => g.remainingNights > 0);
+        }
+      }
+      
+      // Mark NPCs that have completed their stay
+      for (const npc of gameState.npcs) {
+        if (npc.accepted && npc.remainingNights <= 0) {
+          npc.accepted = false;
         }
       }
       
@@ -340,15 +409,20 @@ function setupSocketHandlers(io) {
       }
       
       // Generate resources from generators and watertanks each turn
+      const events = gameState.events || [];
+      const eventEffects = getEventEffects(events);
+      
       let electricityGain = 0;
       let waterGain = 0;
       for (const asset of player.assets) {
         if (asset.type === 'resource') {
           if (asset.produces?.electricity) {
-            electricityGain += asset.produces.electricity;
+            const multiplier = eventEffects.electricityMultiplier !== undefined ? eventEffects.electricityMultiplier : 1;
+            electricityGain += Math.floor(asset.produces.electricity * multiplier);
           }
           if (asset.produces?.water) {
-            waterGain += asset.produces.water;
+            const multiplier = eventEffects.waterMultiplier !== undefined ? eventEffects.waterMultiplier : 1;
+            waterGain += Math.floor(asset.produces.water * multiplier);
           }
         }
       }
@@ -358,8 +432,6 @@ function setupSocketHandlers(io) {
       
       // Add new NPCs each turn based on season and events
       const hs = isHighSeason(gameState.quarter);
-      const events = gameState.events || [];
-      const eventEffects = getEventEffects(events);
       const npcMultiplier = eventEffects.npcMultiplier || 1;
       
       // Base: 2 NPCs high season, 1 NPC low season

@@ -1,4 +1,4 @@
-const { NPC_NAMES, NPC_TYPES, EVENT_EFFECTS, ASSETS, GAME_CONFIG } = require('./gameData');
+const { NPC_NAMES, NPC_TYPES, EVENT_EFFECTS, ASSETS, GAME_CONFIG, SPECIAL_NEEDS, NPC_TIER_REQUIREMENTS, NPC_ASSET_GUEST_LIMITS } = require('./gameData');
 
 function isHighSeason(quarter) {
   return quarter === 2 || quarter === 3;
@@ -43,11 +43,16 @@ function generateNPC(quarter, isHighSeason, eventEffects = null) {
   const names = NPC_NAMES[type];
   const name = names[Math.floor(Math.random() * names.length)];
   
+  // Select tier first, then cap guests based on it
+  const tierRequirement = NPC_TIER_REQUIREMENTS[type][Math.floor(Math.random() * NPC_TIER_REQUIREMENTS[type].length)];
+  const maxGuestsForTier = NPC_ASSET_GUEST_LIMITS[type][tierRequirement];
+  
   let baseGuests = type === 'Hippies' ? 2 : type === 'Families' ? 4 : 2;
   if (eventEffects) {
     baseGuests = Math.floor(baseGuests * eventEffects.npcMultiplier);
   }
-  const guests = baseGuests + Math.floor(Math.random() * 3);
+  // Cap guests at the max allowed for this NPC type + tier combination
+  const guests = Math.min(baseGuests + Math.floor(Math.random() * 3), maxGuestsForTier);
   
   const nights = Math.floor(Math.random() * 3) + 1;
   
@@ -62,11 +67,24 @@ function generateNPC(quarter, isHighSeason, eventEffects = null) {
   
   if (eventEffects) {
     water = Math.floor(water * eventEffects.waterMultiplier);
+    if (eventEffects.electricityMultiplier !== undefined) {
+      electricity = Math.floor(electricity * eventEffects.electricityMultiplier);
+    }
   }
   
+  // Generate special needs based on NPC type
   let specialNeeds = [];
-  if (type === 'Families' && Math.random() < 0.3) {
-    specialNeeds.push('Sports');
+  const roll = Math.random();
+  
+  if (type === 'Families') {
+    if (roll < 0.25) specialNeeds.push('Sports');
+    else if (roll < 0.4) specialNeeds.push('Campfire');
+  } else if (type === 'Hippies') {
+    if (roll < 0.2) specialNeeds.push('Campfire');
+    else if (roll < 0.3) specialNeeds.push('Stage');
+  } else if (type === 'Snobs') {
+    if (roll < 0.3) specialNeeds.push('Sauna');
+    else if (roll < 0.45) specialNeeds.push('Stage');
   }
   
   return {
@@ -82,6 +100,7 @@ function generateNPC(quarter, isHighSeason, eventEffects = null) {
       sleepingSpots: guests
     },
     specialNeeds,
+    tierRequirement,
     quarter,
     accepted: false
   };
