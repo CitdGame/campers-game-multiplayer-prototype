@@ -181,3 +181,13 @@ User erstellen eine Lobby und generieren einen Beitrittscode, den sie an die and
 #### Lobby beitretten
 
 User können einen Beitrittscode eingeben und so einer erstellten Lobby beitretten.
+
+## Slot Logik
+
+Anstelle der Flächenanzeige in der Ressourcen übersicht sehen User nun die Anzahl ihrer Fläche über Slots, welche leer sind wenn sie frei sind, oder das sich auf ihnen befindende Asset anzeigen wenn sie belegt sind.
+
+Hat ein Asset eine benötigte Fläche von 2 oder mehr so müssen User genau so viele freie slots haben um es zu platzieren (außer bei Upgrades, da wird die Differenz zwischen der benötigten Fläche des Upgrades und der genutzten Fläche des existierenden Assets genommen). Alle für das Asset benötigten Slots werden zu einem einzigen Slot zusammengefügt.
+
+User können Slots auf ihrem Campingplatz via drag n' drop neu arrangieren.
+
+Buchungen vom selben NPC-typen können in einem Asset platziert werden, sofern Platz vorhanden ist.

@@ -318,7 +318,7 @@ body {
   gap: 8px;
 }
 
-.player-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.player-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 
 .stat { background: white; border-radius: 10px; padding: 12px; text-align: center; }
 .stat-icon { font-size: 24px; display: block; margin-bottom: 4px; }

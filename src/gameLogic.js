@@ -66,11 +66,17 @@ function generateNPC(quarter, isHighSeason, eventEffects = null) {
   let water = guests * (type === 'Families' ? 2 : 1);
   
   if (eventEffects) {
-    water = Math.floor(water * eventEffects.waterMultiplier);
-    if (eventEffects.electricityMultiplier !== undefined) {
+    if (eventEffects.waterMultiplier !== undefined && eventEffects.waterMultiplier > 0) {
+      water = Math.floor(water * eventEffects.waterMultiplier);
+    }
+    if (eventEffects.electricityMultiplier !== undefined && eventEffects.electricityMultiplier > 0) {
       electricity = Math.floor(electricity * eventEffects.electricityMultiplier);
     }
   }
+  
+  // Ensure minimum 1 water/electricity per guest
+  water = Math.max(water, guests);
+  electricity = Math.max(electricity, guests);
   
   // Generate special needs based on NPC type
   let specialNeeds = [];
@@ -135,8 +141,9 @@ function createPlayer(id, name, playerIndex) {
     id,
     name: name || `Spieler ${playerIndex + 1}`,
     money: GAME_CONFIG.initialMoney,
-    space: GAME_CONFIG.initialSpace,
-    usedSpace: 0,
+    slots: GAME_CONFIG.initialSlots,
+    usedSlots: 0,
+    slotArray: Array(GAME_CONFIG.initialSlots).fill(null),
     electricity: GAME_CONFIG.initialElectricity,
     water: GAME_CONFIG.initialWater,
     assets: [],

@@ -208,54 +208,15 @@ function updateGameUI() {
   
   const player = gameState.players[myPlayerIndex];
   document.getElementById('moneyVal').textContent = player.money;
-  document.getElementById('spaceVal').textContent = `${player.usedSpace}/${player.space}`;
   document.getElementById('electricVal').textContent = player.electricity;
   document.getElementById('waterVal').textContent = player.water;
   
-  const ownedAssets = document.getElementById('ownedAssets');
-  if (player.assets.length === 0) {
-    ownedAssets.innerHTML = '<span style="color:#888;font-size:12px;">Noch keine Assets</span>';
-  } else {
-    const UPGRADES = { tent: { to: 'glamping', cost: 150, name: 'Glamping-Zelt', icon: '🏕️', capacity: 4 }, bungalow: { to: 'luxurybungalow', cost: 300, name: 'Luxus-Bungalow', icon: '🏰', capacity: 8 } };
-    const ASSET_ICONS = { tent: '⛺', glamping: '🏕️', caravan: '🚐', bungalow: '🏠', luxurybungalow: '🏰', generator: '⚡', watertank: '💧', sportsfield: '⚽', campfire: '🔥', sauna: '🧖', stage: '🎭' };
-    
-    ownedAssets.innerHTML = player.assets.map(a => {
-      if (a.assetType && ['tent', 'glamping', 'caravan', 'bungalow', 'luxurybungalow'].includes(a.assetType)) {
-        const currentGuests = a.guestCount || 0;
-        const isOccupied = currentGuests > 0;
-        const guestInfo = isOccupied ? `<div style="font-size:10px;color:#666;">${currentGuests} Gäste (${a.remainingNights} Nächte)</div>` : '';
-        const upgrade = UPGRADES[a.assetType];
-        const canUpgrade = upgrade && !isOccupied && player.money >= upgrade.cost;
-        const upgradeBtn = upgrade ? `<button class="btn btn-orange" style="font-size:10px;padding:2px 6px;margin-top:4px;" onclick="upgradeAsset('${a.id}')">⬆️ ${upgrade.name} (${upgrade.cost}€)</button>` : '';
-        
-        return `
-          <div class="owned-asset" style="${isOccupied ? 'background:#ffeaa7;' : ''}">
-            <div style="font-size:20px;">${ASSET_ICONS[a.assetType] || '🛏️'}</div>
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:13px;">${a.name}</div>
-              <div style="font-size:11px;color:${isOccupied ? '#e67e22' : '#27ae60'};">
-                ${currentGuests}/${a.capacity} belegt
-              </div>
-              ${guestInfo}
-              ${upgradeBtn}
-            </div>
-          </div>
-        `;
-      }
-      return `
-        <div class="owned-asset">
-          ${a.type === 'resource' ? (a.produces?.electricity ? '⚡' : '💧') : '⚽'}
-          ${a.name}
-        </div>
-      `;
-    }).join('');
-  }
-  
   renderPlayerList();
   renderNPCList();
+  renderSlots();
   updateTurnIndicator();
   
-  document.getElementById('buySpaceBtn').disabled = player.money < 100;
+  document.getElementById('buySlotBtn').disabled = player.money < 100;
   
   if (gameState.year > 1 || gameState.quarter > 4 || (gameState.quarter === 4 && gameState.round > 3)) {
     showGameOver();
@@ -271,6 +232,78 @@ function renderPlayerList() {
       <div class="score">${p.score} Pkt</div>
     </div>
   `).join('');
+}
+
+function renderSlots() {
+  const container = document.getElementById('slotsGrid');
+  const player = gameState.players[myPlayerIndex];
+  const slotArray = player.slotArray || [];
+  const isMyTurn = gameState.currentPlayerIndex === myPlayerIndex;
+  
+  const ASSET_ICONS = { tent: '⛺', glamping: '🏕️', caravan: '🚐', bungalow: '🏠', luxurybungalow: '🏰', generator: '⚡', watertank: '💧', sportsfield: '⚽', campfire: '🔥', sauna: '🧖', stage: '🎭' };
+  const SLEEPING_TYPES = ['tent', 'glamping', 'caravan', 'bungalow', 'luxurybungalow'];
+  const UPGRADES = { tent: { to: 'glamping', cost: 150 }, bungalow: { to: 'luxurybungalow', cost: 300 } };
+  
+  // Group consecutive slots by asset
+  const groups = [];
+  let currentGroup = null;
+  
+  for (let i = 0; i < slotArray.length; i++) {
+    const slot = slotArray[i];
+    if (slot === null) {
+      if (currentGroup) {
+        groups.push(currentGroup);
+        currentGroup = null;
+      }
+      groups.push({ type: 'empty', indices: [i] });
+    } else {
+      if (currentGroup && currentGroup.assetId === slot.id) {
+        currentGroup.indices.push(i);
+      } else {
+        if (currentGroup) {
+          groups.push(currentGroup);
+        }
+        currentGroup = { type: 'asset', asset: slot, indices: [i], assetId: slot.id };
+      }
+    }
+  }
+  if (currentGroup) {
+    groups.push(currentGroup);
+  }
+  
+  container.innerHTML = groups.map(group => {
+    if (group.type === 'empty') {
+      return `<div class="slot empty" data-index="${group.indices[0]}" style="width:50px;height:50px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;background:#f9f9f9;border-radius:8px;">⬜</div>`;
+    }
+    const slot = group.asset;
+    const icon = ASSET_ICONS[slot.assetType] || '📦';
+    const size = group.indices.length;
+    const width = 50 + (size - 1) * 54;
+    const isSleeping = SLEEPING_TYPES.includes(slot.assetType);
+    const isOccupied = slot.guestCount > 0;
+    const upgrade = UPGRADES[slot.assetType];
+    const canUpgrade = upgrade && !isOccupied && isMyTurn && player.money >= upgrade.cost;
+    
+    let extraInfo = '';
+    let slotHeight = 50;
+    if (isSleeping && isOccupied) {
+      extraInfo = `<div style="font-size:10px;background:#ffeaa7;padding:2px 4px;border-radius:4px;margin-top:4px;">👥${slot.guestCount}/${slot.capacity} (${slot.remainingNights}N)</div>`;
+      slotHeight = 65;
+    }
+    
+    let upgradeBtn = '';
+    if (canUpgrade) {
+      const upgradeName = slot.assetType === 'tent' ? 'Glamping' : 'Luxus';
+      const currentSlots = slot.slotsNeeded || slot.space;
+      const newSlots = slot.assetType === 'tent' ? 2 : 4;
+      const extraSlots = newSlots - currentSlots;
+      const slotText = extraSlots > 0 ? `+${extraSlots} Slots` : 'gleiche Slots';
+      upgradeBtn = `<button class="btn btn-orange" style="font-size:8px;padding:2px 4px;margin-top:2px;" onclick="event.stopPropagation();upgradeAsset('${slot.id}')" title="${upgradeName} - ${upgrade.cost}€ - ${slotText}">⬆️ ${upgrade.cost}€</button>`;
+      slotHeight = 65;
+    }
+    
+    return `<div class="slot occupied" data-index="${group.indices[0]}" style="width:${width}px;height:${slotHeight}px;border:2px solid var(--green-mid);display:flex;flex-direction:column;align-items:center;justify-content:center;background:${isOccupied ? '#ffeaa7' : '#e8f5e9'};border-radius:8px;font-size:24px;position:relative;cursor:pointer;" onclick="showAssetDetails('${slot.id}')" title="${slot.name} (${size} Slots)">${icon}${extraInfo}${upgradeBtn}</div>`;
+  }).join('');
 }
 
 function updateTurnIndicator() {
@@ -298,43 +331,73 @@ function renderNPCList() {
     return;
   }
   
-  const TIER_ICONS = { tent: '⛺', glamping: '🏕️', caravan: '🚐', bungalow: '🏠', luxurybungalow: '🏰' };
-  const NEED_ICONS = { Sports: '⚽', Campfire: '🔥', Sauna: '🧖', Stage: '🎭' };
+  const TIER_NAMES = { tent: 'Zelt', glamping: 'Glamping', caravan: 'Caravan', bungalow: 'Bungalow', luxurybungalow: 'Luxus-Bungalow' };
+  const NEED_NAMES = { Sports: 'Sportplatz', Campfire: 'Lagerfeuer', Sauna: 'Sauna', Stage: 'Bühne' };
   
-  container.innerHTML = availableNPCs.map(npc => `
-    <div class="npc-card">
-      <div class="npc-header">
-        <span class="npc-name">${npc.name}</span>
-        <span class="npc-type ${npc.type.toLowerCase()}">${npc.type === 'Hippies' ? '🌿' : npc.type === 'Families' ? '👨‍👩‍👧' : '💎'} ${npc.type}</span>
+  container.innerHTML = availableNPCs.map(npc => {
+    const incomePerNight = Math.floor(npc.income / npc.nights);
+    const nightLabel = npc.nights === 1 ? 'Nacht' : 'Nächte';
+    const specialNeedsText = npc.specialNeeds.length > 0 ? ` | ✨ ${npc.specialNeeds.map(n => NEED_NAMES[n] || n).join(', ')}` : '';
+    return `
+    <div class="npc-card" style="padding:10px;margin-bottom:8px;">
+      <div class="npc-header" style="margin-bottom:6px;">
+        <span class="npc-name" style="font-weight:700;">${npc.name}</span>
+        <span class="npc-type ${npc.type.toLowerCase()}" style="font-size:12px;">${npc.type === 'Hippies' ? '🌿' : npc.type === 'Families' ? '👨‍👩‍👧' : '💎'} ${npc.type}</span>
       </div>
-      <div class="npc-details">
-        <div class="npc-detail"><div class="val">👥 ${npc.guests}</div><div class="lbl">Gäste</div></div>
-        <div class="npc-detail"><div class="val">🌙 ${npc.nights}</div><div class="lbl">Nächte</div></div>
-        <div class="npc-detail"><div class="val">💰 ${npc.income}</div><div class="lbl">Einnahmen</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;margin-bottom:6px;">
+        <div>🌙 ${npc.nights} ${nightLabel}</div>
+        <div>👥 ${npc.guests} Schlafpl.</div>
+        <div>💰 ${incomePerNight}/Nacht</div>
+        <div>💰 ${npc.income} Total</div>
+        <div>⚡ ${npc.needs.electricity}</div>
+        <div>💧 ${npc.needs.water}</div>
       </div>
-      <div class="npc-details">
-        <div class="npc-detail"><div class="val">🛏️ ${npc.needs.sleepingSpots}</div><div class="lbl">Schlafpl.</div></div>
-        <div class="npc-detail"><div class="val">⚡ ${npc.needs.electricity}</div><div class="lbl">Strom</div></div>
-        <div class="npc-detail"><div class="val">💧 ${npc.needs.water}</div><div class="lbl">Wasser</div></div>
+      <div style="font-size:12px;margin-bottom:6px;">
+        🏠 ${TIER_NAMES[npc.tierRequirement] || npc.tierRequirement || 'Zelt'}${specialNeedsText}
       </div>
-      <div class="npc-details">
-        <div class="npc-detail"><div class="val">${TIER_ICONS[npc.tierRequirement] || '🛏️'}</div><div class="lbl">${npc.tierRequirement || 'Zelt'}</div></div>
-      </div>
-      ${npc.specialNeeds.length > 0 ? `<div class="npc-special">✨ ${npc.specialNeeds.map(n => NEED_ICONS[n] || '' + ' ' + n).join(', ')}</div>` : ''}
-      <div class="npc-actions">
-        <button class="btn btn-green" onclick="acceptNPC('${npc.id}')">✓ Annehmen</button>
-        <button class="btn btn-red" onclick="rejectNPC('${npc.id}')">✗ Ablehnen</button>
-      </div>
+      <button class="btn btn-green" style="width:100%;font-size:14px;padding:8px;" onclick="acceptNPC('${npc.id}')">✓ Annehmen</button>
     </div>
-  `).join('');
+  `}).join('');
 }
 
-function buySpace() {
-  socket.emit('buySpace');
+function buySlot() {
+  socket.emit('buySlot');
 }
 
 function buyAsset(type) {
   socket.emit('buyAsset', type);
+}
+
+function showUpgradeTip() {
+  alert('💡 Upgrade-Möglichkeiten:\n\n⛺ Zelt → 🏕️ Glamping: 150€\n   (2 Pers → 4 Pers)\n\n🏠 Bungalow → 🏰 Luxus-Bungalow: 300€\n   (6 Pers → 8 Pers)\n\nKlicke auf ein leeres Zelt oder Bungalow auf deinem Platz, um es zu upgraden!');
+}
+
+function showAssetDetails(assetId) {
+  const player = gameState.players[myPlayerIndex];
+  const asset = player.slotArray.find(s => s && s.id === assetId);
+  if (!asset) return;
+  
+  const ASSET_NAMES = { tent: 'Zelt', glamping: 'Glamping', caravan: 'Caravan', bungalow: 'Bungalow', luxurybungalow: 'Luxus-Bungalow', generator: 'Generator', watertank: 'Wassertank', sportsfield: 'Sportplatz', campfire: 'Lagerfeuerstelle', sauna: 'Sauna', stage: 'Open-Air Bühne' };
+  const SLEEPING_TYPES = ['tent', 'glamping', 'caravan', 'bungalow', 'luxurybungalow'];
+  const TYPE_NAMES = { Hippie: 'Hippie', Family: 'Familie', Snob: 'Snob' };
+  
+  const isSleeping = SLEEPING_TYPES.includes(asset.assetType);
+  const slots = asset.slotsNeeded || asset.space;
+  const beds = asset.capacity || 0;
+  
+  let guestInfo = '';
+  if (isSleeping && asset.guestCount > 0) {
+    const npc = gameState.npcs.find(n => n.assignedAssetId === assetId);
+    const guestName = npc ? npc.name : 'Unbekannt';
+    const guestType = TYPE_NAMES[asset.guestType] || asset.guestType;
+    const nights = asset.remainingNights || 0;
+    guestInfo = `\n👥 Gast: ${guestName}\n📋 Typ: ${guestType}\n🌙 Dauer: ${nights} ${nights === 1 ? 'Nacht' : 'Nächte'}`;
+  }
+  
+  const details = `📍 ${ASSET_NAMES[asset.assetType] || asset.name}
+⬜ Slots: ${slots}${isSleeping ? `\n🛏️ Betten: ${beds}` : ''}${guestInfo}`;
+  
+  alert(details);
 }
 
 function upgradeAsset(assetId) {
@@ -473,5 +536,3 @@ function showGameOver() {
   `).join('');
   document.getElementById('gameOverModal').classList.add('active');
 }
-
-document.addEventListener('DOMContentLoaded', initTrees);

@@ -135,7 +135,7 @@ function setupSocketHandlers(io) {
       io.to(data.code).emit('gameStarted', gameState);
     });
 
-    socket.on('buySpace', () => {
+    socket.on('buySlot', () => {
       const data = players.get(socket.id);
       if (!data) return;
       
@@ -150,13 +150,14 @@ function setupSocketHandlers(io) {
         return;
       }
       
-      if (player.money < GAME_CONFIG.spaceExpansionCost) {
+      if (player.money < GAME_CONFIG.slotExpansionCost) {
         socket.emit('error', 'Nicht genug Geld');
         return;
       }
       
-      player.money -= GAME_CONFIG.spaceExpansionCost;
-      player.space += GAME_CONFIG.spaceExpansionAmount;
+      player.money -= GAME_CONFIG.slotExpansionCost;
+      player.slots += GAME_CONFIG.slotExpansionAmount;
+      player.slotArray = [...player.slotArray, ...Array(GAME_CONFIG.slotExpansionAmount).fill(null)];
       
       io.to(data.code).emit('gameStateUpdated', gameState);
     });
@@ -187,14 +188,28 @@ function setupSocketHandlers(io) {
         return;
       }
       
-      if (player.space - player.usedSpace < asset.space) {
-        socket.emit('error', 'Nicht genug Fläche');
+      // Find free slots
+      const freeSlots = player.slotArray.filter(s => s === null).length;
+      if (freeSlots < asset.space) {
+        socket.emit('error', `Nicht genug freie Slots (${freeSlots} frei, ${asset.space} benötigt)`);
         return;
       }
       
       player.money -= asset.price;
-      player.usedSpace += asset.space;
-      player.assets.push({ ...asset, assetType: assetType, id: Math.random().toString(36).substr(2, 9) });
+      player.usedSlots += asset.space;
+      
+      const newAsset = { ...asset, assetType: assetType, id: Math.random().toString(36).substr(2, 9), slotsNeeded: asset.space };
+      
+      // Fill slots with the asset
+      let slotsFilled = 0;
+      for (let i = 0; i < player.slotArray.length && slotsFilled < asset.space; i++) {
+        if (player.slotArray[i] === null) {
+          player.slotArray[i] = newAsset;
+          slotsFilled++;
+        }
+      }
+      
+      player.assets.push(newAsset);
       
       if (asset.produces) {
         if (asset.produces.electricity) player.electricity += asset.produces.electricity;
@@ -248,14 +263,27 @@ function setupSocketHandlers(io) {
         return;
       }
       
-      const spaceDiff = newAsset.space - asset.space;
-      if (spaceDiff > 0 && player.space - player.usedSpace < spaceDiff) {
-        socket.emit('error', 'Nicht genug Fläche');
+      const slotDiff = newAsset.space - (asset.slotsNeeded || asset.space);
+      const freeSlots = player.slotArray.filter(s => s === null).length;
+      if (slotDiff > 0 && freeSlots < slotDiff) {
+        socket.emit('error', `Nicht genug freie Slots (${freeSlots} frei, ${slotDiff} zusätzlich benötigt)`);
         return;
       }
       
       player.money -= upgrade.cost;
-      player.usedSpace += spaceDiff;
+      player.usedSlots += slotDiff;
+      
+      // Fill additional slots if needed
+      if (slotDiff > 0) {
+        asset.slotsNeeded = newAsset.space;
+        let slotsFilled = 0;
+        for (let i = 0; i < player.slotArray.length && slotsFilled < slotDiff; i++) {
+          if (player.slotArray[i] === null) {
+            player.slotArray[i] = asset;
+            slotsFilled++;
+          }
+        }
+      }
       
       asset.type = newAsset.type;
       asset.assetType = upgrade.to;
@@ -298,7 +326,22 @@ function setupSocketHandlers(io) {
         return;
       }
       
-      const currentOccupied = asset.guests?.length || 0;
+      const currentOccupied = asset.guestCount || 0;
+      
+      // Check NPC type compatibility for sharing
+      if (currentOccupied > 0) {
+        // Snobs always stay alone
+        if (npc.type === 'Snobs' || asset.guestType === 'Snobs') {
+          socket.emit('error', 'Snobs mögen keine Mitbewohner!');
+          return;
+        }
+        // Other types must match
+        if (asset.guestType && asset.guestType !== npc.type) {
+          socket.emit('error', `Nur ${asset.guestType} können dieses Asset teilen!`);
+          return;
+        }
+      }
+      
       const available = asset.capacity - currentOccupied;
       
       if (available < npc.guests) {
@@ -331,9 +374,12 @@ function setupSocketHandlers(io) {
       npc.assignedAssetId = assetId;
       npc.remainingNights = npc.nights;
       
-      if (!asset.guestCount) asset.guestCount = 0;
+      if (!asset.guestCount) {
+        asset.guestCount = 0;
+        asset.guestType = npc.type;
+      }
       asset.guestCount += npc.guests;
-      asset.remainingNights = npc.nights;
+      asset.remainingNights = Math.max(asset.remainingNights || 0, npc.nights);
       asset.incomePerNight = (asset.incomePerNight || 0) + (npc.income / npc.nights);
       
       player.score += npc.income;
@@ -415,12 +461,14 @@ function setupSocketHandlers(io) {
       let electricityGain = 0;
       let waterGain = 0;
       for (const asset of player.assets) {
-        if (asset.type === 'resource') {
-          if (asset.produces?.electricity) {
+        const isGenerator = asset.assetType === 'generator';
+        const isWatertank = asset.assetType === 'watertank';
+        if (isGenerator || isWatertank) {
+          if (isGenerator && asset.produces?.electricity) {
             const multiplier = eventEffects.electricityMultiplier !== undefined ? eventEffects.electricityMultiplier : 1;
             electricityGain += Math.floor(asset.produces.electricity * multiplier);
           }
-          if (asset.produces?.water) {
+          if (isWatertank && asset.produces?.water) {
             const multiplier = eventEffects.waterMultiplier !== undefined ? eventEffects.waterMultiplier : 1;
             waterGain += Math.floor(asset.produces.water * multiplier);
           }
