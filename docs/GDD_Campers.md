@@ -196,6 +196,8 @@ Buchungen vom selben NPC-typen können in einem Asset platziert werden, sofern P
 
 Anstatt dass Gäste automatisch in jedem Zug als Anfragen erscheinen, erhalten Spieler:innen Gästeanfragen durch das Ausgeben von Münzen (Gästepunkte).
 
+![Campers - Frame 3](https://github.com/user-attachments/assets/f634f722-2621-4cf3-b08f-a7370e71b9a0)
+
 ### Münztypen
 
 | Typ | Erhalt | Verwendung |
