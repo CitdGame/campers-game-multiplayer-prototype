@@ -3,6 +3,7 @@ const {
   createPlayer,
   generateCode,
   generateNPCsForQuarter,
+  generateNPC,
   isHighSeason,
   getEventsForQuarter,
   getEventEffects,
@@ -21,9 +22,22 @@ function setupSocketHandlers(io) {
       const code = generateCode();
       const gameState = createGameState();
       
+      // Initialize events for Q1 (winter - 1 event)
+      gameState.events = getEventsForQuarter(1);
+      
       const player = createPlayer(socket.id, playerName, 0);
       gameState.players.push(player);
-      gameState.npcs = generateNPCsForQuarter(1, isHighSeason(1));
+      
+      // Generate initial NPCs with event effects (more at start)
+      const eventEffects = getEventEffects(gameState.events);
+      const hs = isHighSeason(1);
+      const npcMultiplier = eventEffects.npcMultiplier || 1;
+      const baseCount = hs ? 3 : 2;
+      const initialNpcCount = Math.max(2, Math.round(baseCount * npcMultiplier));
+      
+      for (let i = 0; i < initialNpcCount; i++) {
+        gameState.npcs.push(generateNPC(1, hs, eventEffects));
+      }
       
       lobbies.set(code, gameState);
       socket.join(code);
@@ -276,19 +290,36 @@ function setupSocketHandlers(io) {
         player.water += npc.needs.water;
       }
       
-      const resourceAssets = player.assets.filter(a => a.type === 'resource');
-      const maxElectricity = resourceAssets.reduce((sum, a) => sum + (a.produces?.electricity || 0), 2);
-      const maxWater = resourceAssets.reduce((sum, a) => sum + (a.produces?.water || 0), 2);
-      player.electricity = Math.min(player.electricity + GAME_CONFIG.baseIncomePerNight, maxElectricity);
-      player.water = Math.min(player.water + GAME_CONFIG.baseIncomePerNight, maxWater);
+      // Generate resources from generators and watertanks each turn
+      let electricityGain = 0;
+      let waterGain = 0;
+      for (const asset of player.assets) {
+        if (asset.type === 'resource') {
+          if (asset.produces?.electricity) {
+            electricityGain += asset.produces.electricity;
+          }
+          if (asset.produces?.water) {
+            waterGain += asset.produces.water;
+          }
+        }
+      }
       
-      // Add new NPCs each turn
+      player.electricity += electricityGain;
+      player.water += waterGain;
+      
+      // Add new NPCs each turn based on season and events
       const hs = isHighSeason(gameState.quarter);
-      const eventEffects = getEventEffects(gameState.events);
-      const npcMultiplier = eventEffects.npcMultiplier;
-      const newNpcCount = hs ? Math.floor(1.5 * npcMultiplier) + 1 : Math.floor(1 * npcMultiplier);
+      const events = gameState.events || [];
+      const eventEffects = getEventEffects(events);
+      const npcMultiplier = eventEffects.npcMultiplier || 1;
+      
+      // Base: 2 NPCs high season, 1 NPC low season
+      // Then apply event multiplier
+      let baseCount = hs ? 2 : 1;
+      let newNpcCount = Math.max(1, Math.round(baseCount * npcMultiplier));
+      
       for (let i = 0; i < newNpcCount; i++) {
-        gameState.npcs.push(require('./gameLogic').generateNPC(gameState.quarter, hs, eventEffects));
+        gameState.npcs.push(generateNPC(gameState.quarter, hs, eventEffects));
       }
       gameState.npcs = gameState.npcs.filter(n => n.accepted || n.remainingNights === undefined || n.remainingNights > 0);
       

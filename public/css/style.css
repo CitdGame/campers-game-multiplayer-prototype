@@ -27,6 +27,99 @@ body {
   z-index: 0;
   overflow: hidden;
   background: linear-gradient(180deg, var(--sky) 0%, #d4eddc 55%, #c8e6c8 100%);
+  transition: background 2s ease-in-out;
+}
+
+/* Winter (Q1) */
+.scene.winter {
+  background: linear-gradient(180deg, #b8c6d9 0%, #e8eef5 40%, #dde5ed 100%);
+}
+.scene.winter .grass {
+  background: linear-gradient(180deg, #e8e8e8 0%, #d0d0d0 100%);
+}
+.scene.winter .tree-top { border-bottom-color: #3d5a3d; }
+.scene.winter .tree-top::after { border-bottom-color: #4a6b4a; }
+.scene.winter .snow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, white 2px, transparent 2px),
+              radial-gradient(circle at 40% 10%, white 1px, transparent 1px),
+              radial-gradient(circle at 60% 25%, white 2px, transparent 2px),
+              radial-gradient(circle at 80% 15%, white 1px, transparent 1px),
+              radial-gradient(circle at 30% 30%, white 1px, transparent 1px),
+              radial-gradient(circle at 70% 35%, white 2px, transparent 2px);
+  animation: snow 8s linear infinite;
+  opacity: 0.8;
+}
+@keyframes snow {
+  from { transform: translateY(-100px); }
+  to { transform: translateY(100vh); }
+}
+
+/* Spring (Q2) */
+.scene.spring {
+  background: linear-gradient(180deg, #87ceeb 0%, #98d8aa 55%, #7bc67a 100%);
+}
+.scene.spring .grass {
+  background: linear-gradient(180deg, #90EE90 0%, #7bc67a 100%);
+}
+.scene.spring .tree-top { border-bottom-color: #2d5a27; }
+.scene.spring .tree-top::after { border-bottom-color: #4a8c3f; }
+.scene.spring .flowers {
+  position: absolute;
+  bottom: 80px;
+  left: 0;
+  right: 0;
+  height: 20px;
+}
+.scene.spring .flower {
+  position: absolute;
+  bottom: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: sway 2s ease-in-out infinite;
+}
+
+/* Summer (Q3) */
+.scene.summer {
+  background: linear-gradient(180deg, #87ceeb 0%, #ffe066 30%, #ffd700 55%, #ffb347 100%);
+}
+.scene.summer .grass {
+  background: linear-gradient(180deg, #7bc67a 0%, #4a8c3f 100%);
+}
+.scene.summer .tree-top { border-bottom-color: #1e4d1a; }
+.scene.summer .tree-top::after { border-bottom-color: #2d5a27; }
+.scene.summer .sun {
+  width: 100px;
+  height: 100px;
+  top: 20px;
+  box-shadow: 0 0 60px rgba(255,215,0,0.8);
+}
+
+/* Autumn (Q4) */
+.scene.autumn {
+  background: linear-gradient(180deg, #d4a574 0%, #f4a460 40%, #cd853f 100%);
+}
+.scene.autumn .grass {
+  background: linear-gradient(180deg, #d2b48c 0%, #8b7355 100%);
+}
+.scene.autumn .tree-top { border-bottom-color: #8b4513; }
+.scene.autumn .tree-top::after { border-bottom-color: #a0522d; }
+.scene.autumn .leaves {
+  position: absolute;
+  bottom: 80px;
+  left: 0;
+  right: 0;
+  height: 30px;
+}
+.scene.autumn .leaf {
+  position: absolute;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50% 0 50% 0;
+  animation: fall 4s ease-in-out infinite;
 }
 
 .sun {

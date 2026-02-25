@@ -46,20 +46,32 @@ Grundprinzip: Ereignisse werden zu Beginn eines Quartals aufgedeckt
 - Sie verändern Nachfrage, Ressourcen oder Asset-Werte
 
 Modularer Aufbau:
-- 12–16 Basiskarten
-- 10 Wetterkarten-Modul
-- 10 Wirtschafts-/Trendkarten-Modul
-- 6 High-Interaction-Karten (Abstimmungen)
+- X Basiskarten
+- Y Wetterkarten-Modul
+- Z Wirtschafts-/Trendkarten-Modul
+- W High-Interaction-Karten (Abstimmungen)
 
-##### Beispiel-Ereignisse (siehe 0226_Erweiterung) 
-- Wetter
-- Dauerregen
-- Sturmwarnung
+##### Entwicklungs-Ereignisse (siehe 0226_Erweiterung für mehr) 
+- Dauerregen:
+    - Es regnet in Strömen und für diese Saison ist kein Ende in sicht..
+    Effekt:
+        - NPCs pro Zug halbieren sich
+- Tourismusboom:
+    - Eure Region wurde zum Weltkulturerbe ausgerufen!
+    Effekt:
+        - NPCs pro Zug verdoppeln sich
+- Sturmwarnung:
+    - Das Aufeinandertreffen von Hoch- & Tiefdruckgebieten sorgt für heftige Unwetter in den Nächten.
+    Effekt:
+        - NPCs wollen nicht in Zelten untergebracht werden
+- Festival:
+    - In eurer Region findet ein Festival statt
+    Effekt:
+        - NPCs wollen bevorzugt in Zelten untergebracht werden
 - Hitzewelle
 - Kälteeinbruch
 - Dürre
 - Wirtschaft
-- Tourismusboom
 - Wirtschaftskrise
 - Luxus-Trend
 - Minimalismus-Trend
@@ -80,7 +92,7 @@ Modularer Aufbau:
 
 #### Core Game Loops
 1. Am Anfang eines Zuges wird der NPC-Pool aufgefüllt (potenzielle Gäste)
-2. Führe bis zu 3 Aktionen aus:
+2. Führe bis zu X Aktionen aus:
     - **Bauen**: Assets errichten oder upgraden
     - **Kaufen**: Ressourcen erwerben
     - **Gästemanagement**: Buchungen annehmen, Gäste platzieren oder entfernen
@@ -108,18 +120,34 @@ mandatory:
 Assets als Interface mit den Werten:
 - Preis
 - Flächenbedarf
-3 Arten von Assets:- Buchbare Assets:
-	- Schlafplätze (bisher Zelte, Wohnwägen & Bungalows)
+3 Arten von Assets:
+- Buchbare Assets:
+	- Schlafplätze:
+        - Zelt (upgradebar auf Glamping-Zelt)
+        - Wohnwagen
+        - Bungalow (upgradebar auf Luxus-Bungalow)
 - Ressourcen generierende Assets:
     - Bisher Stromgenerator & Wassertank
 - Sonderbedürfnisse erfüllende Assets:
-    - Entwicklungsbeispiel: Sportplatz (Sonderbedürfnis mancher Familien)
+    - Sportplatz (Sonderbedürfnis mancher Familien)
+    - Lagerfeuerstelle (Sonderbedürfnis mancher Hippies & Familien)
+    - Sauna (Sonderbedürfnis mancher Snobs)
+    - Open-Air Bühne (Sonderbedürfnis mancher Hippies & Snobs)
+
+###### NPC-Schlafplatz-Logik:
+**Hippies** können Anfragen stellen für: Zelte, Wohnwägen oder Bungalows.
+**Familien** können Anfragen stellen für: Zelte, Wohnwägen oder Bungalows.
+**Snobs** können Anfragen stellen für: Glamping-Zelte, Bungalows oder Luxus-Bungalows.
 
 ##### Ressourcen:
-Aufgeteilt in kaufbare (Fläche) & generierbare (Geld, Strom & Wasser)Spieler können:
-Mit ausreichend Geld: 	- eine Fläche kaufen und die gesamt Fläche ihres Campingplatzes vergrößern.
+Aufgeteilt in kaufbare (Fläche) & generierbare (Geld, Strom & Wasser)
 
-Mit ausreichend Geld & Fläche: Einen der 3 Asset typen kaufen & platzieren.NPC Anfragen sehen & diese, wenn sie die Bedürfnisse erfüllen können annehmen & einem den Bedürfnissen entsprechenden Schlafplatz zuweisen. Oder sie ablehnen.
+Spieler können:
+- Mit ausreichend Geld: 	
+    - eine Fläche kaufen und die gesamt Fläche ihres Campingplatzes vergrößern.
+- Mit ausreichend Geld & Fläche: 
+    - Einen der 3 Asset typen kaufen & platzieren.
+- NPC Anfragen sehen & diese, wenn sie die Bedürfnisse erfüllen können annehmen & einem den Bedürfnissen entsprechenden Schlafplatz zuweisen. Oder sie ablehnen.
 
 
 

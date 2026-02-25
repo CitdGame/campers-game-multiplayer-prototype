@@ -158,6 +158,11 @@ function updateGameUI() {
   const isHighSeason = gameState.quarter === 2 || gameState.quarter === 3;
   document.getElementById('seasonVal').textContent = isHighSeason ? 'Haupt' : 'Neben';
   
+  // Update seasonal background
+  const scene = document.querySelector('.scene');
+  const seasonClasses = { 1: 'winter', 2: 'spring', 3: 'summer', 4: 'autumn' };
+  scene.className = 'scene ' + (seasonClasses[gameState.quarter] || 'spring');
+  
   const eventBanner = document.getElementById('eventBanner');
   const events = gameState.events || [];
   
