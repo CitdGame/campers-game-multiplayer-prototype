@@ -461,7 +461,8 @@ function setupSocketHandlers(io) {
       player.water += waterGain;
       
       // Give 2 generic coins each turn (players use coins to request guests)
-      player.coins.generic = (player.coins.generic || 0) + 2;
+      // Cap at 10 generic coins
+      player.coins.generic = Math.min((player.coins.generic || 0) + 2, 10);
       
       // Clean up NPCs that have completed their stay (move them to available pool)
       gameState.npcs = gameState.npcs.filter(n => n.accepted || n.remainingNights === undefined || n.remainingNights > 0);

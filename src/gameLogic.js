@@ -43,8 +43,32 @@ function generateNPC(quarter, isHighSeason, eventEffects = null, forcedType = nu
   const names = NPC_NAMES[type];
   const name = names[Math.floor(Math.random() * names.length)];
   
-  // Select tier first, then cap guests based on it
-  const tierRequirement = NPC_TIER_REQUIREMENTS[type][Math.floor(Math.random() * NPC_TIER_REQUIREMENTS[type].length)];
+  // Get available tiers for this NPC type
+  let availableTiers = [...NPC_TIER_REQUIREMENTS[type]];
+  
+  // Apply event tier preferences/dislikes
+  if (eventEffects) {
+    // If there's a preferred tier and NPC accepts it, weight it higher
+    if (eventEffects.preferredTier) {
+      const preferredIndex = availableTiers.indexOf(eventEffects.preferredTier);
+      if (preferredIndex > -1) {
+        // Move preferred tier to front (higher chance)
+        availableTiers.splice(preferredIndex, 1);
+        availableTiers.unshift(eventEffects.preferredTier);
+      }
+    }
+    // If there's a disliked tier, remove it from options (or lower its chance)
+    if (eventEffects.dislikedTier) {
+      const dislikedIndex = availableTiers.indexOf(eventEffects.dislikedTier);
+      if (dislikedIndex > -1) {
+        // Move disliked tier to end or remove it
+        availableTiers.splice(dislikedIndex, 1);
+      }
+    }
+  }
+  
+  // Select tier (with event influence)
+  const tierRequirement = availableTiers[Math.floor(Math.random() * availableTiers.length)];
   const maxGuestsForTier = NPC_ASSET_GUEST_LIMITS[type][tierRequirement];
   
   let baseGuests = type === 'Hippies' ? 2 : type === 'Families' ? 4 : 2;

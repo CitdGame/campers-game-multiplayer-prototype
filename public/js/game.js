@@ -233,12 +233,70 @@ function updateGameUI() {
 function renderPlayerList() {
   const container = document.getElementById('playerList');
   container.innerHTML = gameState.players.map((p, i) => `
-    <div class="player-card ${i === gameState.currentPlayerIndex ? 'active' : ''}">
+    <div class="player-card ${i === gameState.currentPlayerIndex ? 'active' : ''}" onclick="showPlayerDetails(${i})" style="cursor:pointer;">
       <div class="icon">${playerIcons[i]}</div>
       <div class="name">${p.name}</div>
       <div class="score">${p.score} Pkt</div>
     </div>
   `).join('');
+}
+
+function showPlayerDetails(playerIndex) {
+  const p = gameState.players[playerIndex];
+  if (!p) return;
+  
+  const isMe = playerIndex === myPlayerIndex;
+  const isActive = playerIndex === gameState.currentPlayerIndex;
+  const ASSET_NAMES = { tent: 'Zelt', glamping: 'Glamping', caravan: 'Caravan', bungalow: 'Bungalow', luxurybungalow: 'Luxus-Bungalow', generator: 'Generator', watertank: 'Wassertank', sportsfield: 'Sportplatz', campfire: 'Lagerfeuer', sauna: 'Sauna', stage: 'Bühne' };
+  const ASSET_ICONS = { tent: '⛺', glamping: '🏕️', caravan: '🚐', bungalow: '🏠', luxurybungalow: '🏰', generator: '⚡', watertank: '💧', sportsfield: '⚽', campfire: '🔥', sauna: '🧖', stage: '🎭' };
+  
+  const slotArray = p.slotArray || [];
+  const occupiedSlots = slotArray.filter(s => s !== null).length;
+  const totalSlots = slotArray.length;
+  
+  // Group assets by type
+  const assetCounts = {};
+  const assetList = [];
+  const seen = new Set();
+  for (const slot of slotArray) {
+    if (slot && !seen.has(slot.id)) {
+      seen.add(slot.id);
+      assetList.push(slot);
+    }
+  }
+  
+  let html = `<div style="font-size:14px;">
+    <div style="margin-bottom:12px;">
+      <span style="font-size:24px;">${playerIcons[playerIndex]}</span>
+      <b>${p.name}</b>${isMe ? ' (Du)' : ''}${isActive ? ' ⏳' : ''}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div style="background:#f5f5f5;padding:8px;border-radius:6px;">💰 <b>${p.money}€</b></div>
+      <div style="background:#f5f5f5;padding:8px;border-radius:6px;">🏆 <b>${p.score} Pkt</b></div>
+    </div>
+    <div style="background:#f5f5f5;padding:8px;border-radius:6px;margin-bottom:12px;">
+      🎪 Slots: ${occupiedSlots}/${totalSlots}
+    </div>
+    <div style="font-weight:700;margin-bottom:8px;">🏕️ Campingplatz:</div>`;
+  
+  if (assetList.length === 0) {
+    html += '<div style="color:#888;font-style:italic;">Leerer Platz</div>';
+  } else {
+    for (const asset of assetList) {
+      const icon = ASSET_ICONS[asset.assetType] || '📦';
+      const name = ASSET_NAMES[asset.assetType] || asset.name;
+      const occupied = asset.guestCount > 0 ? ` (${asset.guestCount} Gäste)` : '';
+      html += `<div style="padding:6px;margin-bottom:4px;background:#fff;border-radius:4px;">
+        ${icon} ${name}${occupied}
+      </div>`;
+    }
+  }
+  
+  html += '</div>';
+  
+  document.getElementById('playerDetailsTitle').innerHTML = `${playerIcons[playerIndex]} ${p.name}`;
+  document.getElementById('playerDetailsContent').innerHTML = html;
+  document.getElementById('playerDetailsModal').style.display = 'flex';
 }
 
 function renderSlots() {
