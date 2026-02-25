@@ -1,22 +1,63 @@
 const socket = io();
+
+socket.on('connect_error', (err) => {
+  console.error('Socket connection error:', err);
+  showError('Verbindungsfehler: ' + err.message);
+});
+
+socket.on('error', (msg) => {
+  showError(msg);
+});
+
 let myPlayerIndex = 0;
 let gameState = null;
 let lobbyCode = '';
+let isSolo = false;
 
-const playerIcons = ['🏕️','🎒','🌲','🔥'];
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('solo') === 'true') {
+  isSolo = true;
+  
+  // Hide multiplayer panels
+  document.getElementById('landingPage').style.display = 'none';
+  
+  // Start solo game after socket connects
+  socket.on('connect', () => {
+    const playerName = localStorage.getItem('soloPlayerName') || 'Spieler';
+    socket.emit('startSolo', playerName);
+  });
+}
 
-function initTrees() {
-  const treesEl = document.getElementById('trees');
-  const treeTypes = ['t1','t2','t3'];
-  for (let i = 0; i < 18; i++) {
-    const type = treeTypes[Math.floor(Math.random() * 3)];
-    const scale = 0.6 + Math.random() * 0.5;
-    const ml = i === 0 ? 0 : -8 + Math.random() * 25;
+socket.on('soloStarted', (data) => {
+  myPlayerIndex = 0;
+  gameState = data.gameState;
+  document.getElementById('gamePage').style.display = 'block';
+  updateGameUI();
+});
+
+const playerIcons = ['🏕️','🎒','🌲','🔥','🎣','⛺','🌻','🏔️'];
+
+function renderPlayerSlots(players) {
+  const container = document.getElementById('playerSlots');
+  container.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    const filled = i < players.length;
     const div = document.createElement('div');
-    div.className = `tree ${type}`;
-    div.style.cssText = `transform: scale(${scale}); margin-left: ${ml}px;`;
-    div.innerHTML = `<div class="tree-top"></div><div class="tree-trunk"></div>`;
-    treesEl.appendChild(div);
+    div.className = `slot ${filled ? 'filled' : ''}`;
+    div.innerHTML = filled ? `<b>${playerIcons[i]}</b><br>${players[i].name}` : 'Wartet…';
+    container.appendChild(div);
+  }
+  
+  const status = document.getElementById('lobbyStatus');
+  const startBtn = document.getElementById('startBtn');
+  if (startBtn) {
+    if (players.length < 2) {
+      status.textContent = `Warte auf Spieler… (${players.length}/8) – mind. 2 benötigt`;
+      startBtn.disabled = true;
+    } else {
+      status.textContent = `${players.length} Spieler bereit – Du kannst starten!`;
+      startBtn.disabled = false;
+    }
   }
 }
 
@@ -72,27 +113,6 @@ socket.on('playerJoined', (data) => {
 socket.on('error', (msg) => {
   showError(msg);
 });
-
-function renderPlayerSlots(players) {
-  const container = document.getElementById('playerSlots');
-  container.innerHTML = '';
-  for (let i = 0; i < 4; i++) {
-    const filled = i < players.length;
-    const div = document.createElement('div');
-    div.className = `slot ${filled ? 'filled' : ''}`;
-    div.innerHTML = filled ? `<b>${playerIcons[i]}</b><br>${players[i].name}` : 'Wartet…';
-    container.appendChild(div);
-  }
-  
-  const status = document.getElementById('lobbyStatus');
-  if (players.length < 2) {
-    status.textContent = `Warte auf Spieler… (${players.length}/4) – mind. 2 benötigt`;
-    document.getElementById('startBtn').disabled = true;
-  } else {
-    status.textContent = `${players.length} Spieler bereit – Du kannst starten!`;
-    document.getElementById('startBtn').disabled = false;
-  }
-}
 
 function startGame() {
   socket.emit('startGame');

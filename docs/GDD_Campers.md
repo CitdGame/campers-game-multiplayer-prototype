@@ -68,24 +68,18 @@ Modularer Aufbau:
     - In eurer Region findet ein Festival statt
     Effekt:
         - NPCs wollen bevorzugt in Zelten untergebracht werden
-- Hitzewelle
-- Kälteeinbruch
-- Dürre
-- Wirtschaft
-- Wirtschaftskrise
-- Luxus-Trend
-- Minimalismus-Trend
-- Regionale Events
-- Festival in der Nähe
-- Sportgroßevent
-- Angelwettbewerb
-- Indie-Musik-Woche
-- Soziale Dynamik
-- Influencer-Hype
-- Online-Shitstorm
-- Campingplatz-Auszeichnung
-- Wildtiere auf dem Platz
-
+- Hitzewelle:
+    - Die pralle Sonne macht eure Besuchenden extra durstig!
+    Effekt:
+        - erhöhter Wasserverbrauch
+- Dürre:
+    - Der Nestel-Konzern hat so viel Grundwasser abgepumpt, dass es zu einer Wasserknappheit in eurer Region gekommen ist.. 
+    Effekt:
+        - Wassertanks generieren kein Wasser/Runde
+- Blackout:
+    - Ein Sonnensturm hat das lokale Energienetzwerk flachgelegt..
+    Effekt:
+        - Stromgenerator generieren keinen Strom/Runde
 
 ### Gameplay
 - Rundenbasiertes Ressourcen- und Gäste-Management.
@@ -150,6 +144,38 @@ Spieler können:
     - Einen der 3 Asset typen kaufen & platzieren.
 - NPC Anfragen sehen & diese, wenn sie die Bedürfnisse erfüllen können annehmen & einem den Bedürfnissen entsprechenden Schlafplatz zuweisen. Oder sie ablehnen.
 
+## Game Menu
+
+### Landing Page
+
+Ein Homescreen, der das Campers-Logo zeigt und das Campers-Thema für die Sommersaison als Hintergrund hat.
+
+User können Auswählen zwischen:
+
+- Tutorial spielen
+- Solo-Spiel spielen
+- Multiplayer spielen
+    - Lobby erstellen
+    - Lobby beitreten
+- Bestenliste anschauen
 
 
+### Tutorial
+
+User spielen 2 Saisons, in denen sichergestellt ist, dass alle Spielmechanismen auftretten und erhalten erklärende Pop-Ups jedes mal, wenn ein Spielmechanismus zum ersten Mal erscheint. Ebenso werden alle Resourcen- & sonstige Entitätenarten (NPC-Typen, Schlafplatz-Type, Asset-Typen) erklärt.
+
+### Solo-Spiel
+
+User spielen ein Spiel alleine und können anschließend ihren Score auf dem Leaderboard posten.
+
+### Mulitplayer
+
+Bis zu 8 User können in einer Lobby gemeinsam gegeneiander Spielen. Der Gewinner des Spiels kann anschließend seinen Score auf dem Leaderboard posten.
+
+#### Lobby erstellen
+
+User erstellen eine Lobby und generieren einen Beitrittscode, den sie an die anderen User versenden können.
     
+#### Lobby beitretten
+
+User können einen Beitrittscode eingeben und so einer erstellten Lobby beitretten.

@@ -11,13 +11,62 @@ const {
   GAME_CONFIG
 } = require('./gameLogic');
 
-const lobbies = new Map();
-const players = new Map();
+// Use global to avoid module caching issues
+global.gameLobbies = global.gameLobbies || new Map();
+global.gamePlayers = global.gamePlayers || new Map();
+const lobbies = global.gameLobbies;
+const players = global.gamePlayers;
 
+const GLOBAL_LOBBY_ID = global.gameLobbies.has('GLOBAL_ID') ? global.gameLobbies.get('GLOBAL_ID') : Math.random().toString(36).substr(2, 8);
+global.gameLobbies.set('GLOBAL_ID', GLOBAL_LOBBY_ID);
+
+let loadCount = 0;
+loadCount++;
+console.log('socketHandlers.js loaded #', loadCount, 'GLOBAL_LOBBY_ID:', GLOBAL_LOBBY_ID, 'lobbies size:', lobbies.size);
+
+let setupCount = 0;
 function setupSocketHandlers(io) {
+  setupCount++;
+  console.log('setupSocketHandlers called #', setupCount, 'GLOBAL_ID:', GLOBAL_LOBBY_ID, 'size:', lobbies.size);
+  
   io.on('connection', (socket) => {
-    console.log('Player connected:', socket.id);
+    console.log('Player connected:', socket.id, 'GLOBAL_ID:', GLOBAL_LOBBY_ID, 'lobbies size:', lobbies.size);
 
+    // Solo game handlers
+    socket.on('startSolo', (playerName) => {
+      console.log('startSolo:', playerName, 'GLOBAL_ID:', GLOBAL_LOBBY_ID, 'size BEFORE:', lobbies.size);
+      const code = 'SOLO-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+      
+      const gameState = createGameState();
+      gameState.events = getEventsForQuarter(1);
+      gameState.isSolo = true;
+      
+      const player = createPlayer(socket.id, playerName || 'Du', 0);
+      gameState.players.push(player);
+      
+      const eventEffects = getEventEffects(gameState.events);
+      const hs = isHighSeason(1);
+      const npcMultiplier = eventEffects.npcMultiplier || 1;
+      const initialNpcCount = Math.max(3, Math.round((hs ? 4 : 3) * npcMultiplier));
+      
+      for (let i = 0; i < initialNpcCount; i++) {
+        gameState.npcs.push(generateNPC(1, hs, eventEffects));
+      }
+      
+      lobbies.set(code, gameState);
+      console.log('Stored', code, 'Map now:', Array.from(lobbies.keys()));
+      socket.join(code);
+      players.set(socket.id, { code, playerIndex: 0 });
+      
+      console.log('Lobbies now:', lobbies.size);
+      socket.emit('soloStarted', { gameState });
+      io.to(code).emit('gameStarted', gameState);
+    });
+
+    // Remove joinSolo - we don't need it anymore
+    // socket.on('joinSolo', (code) => {
+
+    // Multiplayer handlers
     socket.on('createLobby', (playerName) => {
       const code = generateCode();
       const gameState = createGameState();
