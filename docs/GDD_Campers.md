@@ -191,3 +191,39 @@ Hat ein Asset eine benötigte Fläche von 2 oder mehr so müssen User genau so v
 User können Slots auf ihrem Campingplatz via drag n' drop neu arrangieren.
 
 Buchungen vom selben NPC-typen können in einem Asset platziert werden, sofern Platz vorhanden ist.
+
+## Gästepunkte-System (Münzen)
+
+Anstatt dass Gäste automatisch in jedem Zug als Anfragen erscheinen, erhalten Spieler:innen Gästeanfragen durch das Ausgeben von Münzen (Gästepunkte).
+
+### Münztypen
+
+| Typ | Erhalt | Verwendung |
+|-----|--------|------------|
+| 🪙 Generisch | +2 pro Zug | Beliebigen Gastyp anfordern |
+| 🌿 Hippie | Durch Promotionen | Nur Hippie-Gäste anfordern |
+| 👨‍👩‍👧‍👦 Familie | Durch Promotionen | Nur Familien-Gäste anfordern |
+| 👑 Snob | Durch Promotionen | Nur Snob-Gäste anfordern |
+
+### Promotionen
+
+Spieler:innen können Promotionen starten, um typ-spezifische Münzen zu verdienen:
+
+| Promotion | Kosten | Ertrag |
+|-----------|--------|--------|
+| Hippie-Woche | 100€ | +1 Hippie-Münze |
+| Familienaktion | 150€ | +1 Familie-Münze |
+| Luxus-Event | 200€ | +1 Snob-Münze |
+
+### Spielmechanik
+
+1. **Zugbeginn**: Spieler erhält +2 generische Münzen
+2. **Gäste anfordern**: Eine Münze ausgeben → neuer NPC erscheint in der Anfragenliste
+3. **Promotion starten**: Geld ausgeben → spezifische Münze erhalten
+4. **Typ-spezifische Münzen**: Können nur für den entsprechenden Gastyp verwendet werden
+
+### Strategische Überlegungen
+
+- Generische Münzen sind flexibel, aber Promotionen ermöglichen gezieltere Gästeauswahl
+- Bestimmte NPC-Typen passen besser zu bestimmten Assets (z.B. Snobs → Luxus-Bungalows)
+- Events beeinflussen weiterhin die generierten NPCs (Nachfrage, Ressourcenbedarf, Einkommen)
