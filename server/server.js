@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { AssetManager } from './game/AssetManager.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -64,9 +65,24 @@ function createGameState(players) {
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
+  console.log('Socket connected successfully!');
 
   let currentLobby = null;
   let playerData = null;
+
+  // Add debug logging for all events
+  socket.onAny((eventName, ...args) => {
+    console.log(`[DEBUG] Event received: ${eventName}`, args);
+  });
+
+  // Add connection status monitoring
+  socket.on('disconnect', (reason) => {
+    console.log('Client disconnected:', socket.id, 'Reason:', reason);
+  });
+
+  socket.on('connect_error', (error) => {
+    console.log('Connection error:', error);
+  });
 
   socket.on('createLobby', ({ name }) => {
     const code = generateCode();
@@ -126,6 +142,11 @@ io.on('connection', (socket) => {
   // Solo game handling
   let soloGame = null; // Store solo game state
   
+  socket.on('heartbeat', () => {
+    console.log('[HEARTBEAT] Received heartbeat from client');
+    socket.emit('heartbeat_response', { timestamp: Date.now() });
+  });
+
   socket.on('startSolo', (playerName) => {
     console.log(`Starting solo game for ${playerName}`);
     
@@ -155,7 +176,7 @@ io.on('connection', (socket) => {
     if (soloGame) {
       const player = soloGame.gameState.players[0];
       
-      // Check if tile is unclaimed
+      // Check if tile is unclaimed (not owned by any player)
       if (soloGame.gameState.board[tileId] !== undefined) {
         socket.emit('error', 'Feld bereits besetzt');
         return;
@@ -191,12 +212,9 @@ io.on('connection', (socket) => {
       player.money -= 100;
       if (!player.slots) player.slots = {};
       player.slots[tileId] = { assetType: null, guestCount: 0 };
-      soloGame.gameState.board[tileId] = 0;
+      soloGame.gameState.board[tileId] = 0; // Player 0 owns this tile
       
-      socket.emit('soloStarted', {
-        gameState: soloGame.gameState,
-        myPlayerIndex: 0
-      });
+      socket.emit('gameState', soloGame.gameState);
       return;
     }
     
@@ -505,10 +523,7 @@ io.on('connection', (socket) => {
         waterChange: result.waterChange,
         gameState: soloGame.gameState
       });
-      socket.emit('soloStarted', {
-        gameState: soloGame.gameState,
-        myPlayerIndex: 0
-      });
+      socket.emit('gameState', soloGame.gameState);
     } else {
       io.to(lobby.lobby).emit('turnSummary', {
         income: result.income,
@@ -592,10 +607,7 @@ io.on('connection', (socket) => {
     slot.guestCount = (slot.guestCount || 0) + npc.guests;
     
     if (isSoloGame) {
-      socket.emit('soloStarted', {
-        gameState: soloGame.gameState,
-        myPlayerIndex: 0
-      });
+      socket.emit('gameState', soloGame.gameState);
     } else {
       const p = players.get(socket.id);
       io.to(p.lobby).emit('gameState', gameState);
@@ -644,10 +656,7 @@ io.on('connection', (socket) => {
     slot.capacity = newAsset.capacity;
     
     if (isSoloGame) {
-      socket.emit('soloStarted', {
-        gameState: soloGame.gameState,
-        myPlayerIndex: 0
-      });
+      socket.emit('gameState', soloGame.gameState);
     } else {
       const p = players.get(socket.id);
       io.to(p.lobby).emit('gameState', gameState);
@@ -687,10 +696,7 @@ io.on('connection', (socket) => {
     npc.assignedAsset = null;
     
     if (isSoloGame) {
-      socket.emit('soloStarted', {
-        gameState: soloGame.gameState,
-        myPlayerIndex: 0
-      });
+      socket.emit('gameState', soloGame.gameState);
     } else {
       const p = players.get(socket.id);
       io.to(p.lobby).emit('gameState', gameState);
@@ -721,132 +727,244 @@ io.on('connection', (socket) => {
     socket.emit('leaderboard', leaderboard);
   });
 
-  socket.on('buyAsset', ({ type, tileId }) => {
+  socket.on('buyAsset', ({ type, tileId, tileId: tilesToOccupy }) => {
+    console.log('[BUY ASSET] Event handler triggered!');
+    try {
+      console.log('=== BUY ASSET DEBUG ===');
+      console.log('Received buyAsset request:', { type, tileId, tilesToOccupy });
+      console.log('soloGame exists:', !!soloGame);
+      
+      if (!soloGame) {
+        console.log('[BUY ASSET] No solo game found!');
+        return;
+      }
+      
+      console.log('Current board state:', soloGame.gameState.board);
+      console.log('Current player slots:', soloGame.gameState.players[0].slots);
+      
+      // Handle solo game
+      if (soloGame) {
+        const player = soloGame.gameState.players[0];
+        const asset = ASSETS[type];
+        
+        if (!asset) {
+          socket.emit('error', 'Unbekannter Asset-Typ');
+          return;
+        }
+        
+        // Handle both single tile and multi-tile placement
+        const tilesToPlace = Array.isArray(tileId) ? tileId : [tileId];
+        console.log('Tiles to place:', tilesToPlace);
+        
+        // Use AssetManager for validation
+        const affordCheck = AssetManager.canAffordAsset(player, type);
+        if (!affordCheck.canAfford) {
+          socket.emit('error', affordCheck.reason);
+          return;
+        }
+        
+        const slotCheck = AssetManager.hasEnoughSlots(player, type);
+        if (!slotCheck.hasSlots) {
+          socket.emit('error', slotCheck.reason);
+          return;
+        }
+        
+        // Check if we can place the multi-tile asset
+        // For multi-tile assets, use the first tile as the center for validation
+        const centerTileId = Array.isArray(tileId) ? tileId[0] : tileId;
+        const placeCheck = AssetManager.canPlaceAsset(player, centerTileId, type, soloGame.gameState);
+        if (!placeCheck.canPlace) {
+          socket.emit('error', placeCheck.reason);
+          return;
+        }
+        
+        // For multi-tile assets, verify all required tiles are available
+        if (asset.slots > 1) {
+          const tilesToPlace = Array.isArray(tileId) ? tileId : [tileId];
+          console.log('Multi-tile asset, checking tiles:', tilesToPlace);
+          
+          // Check if all tiles are unclaimed or owned by player
+          for (const targetTileId of tilesToPlace) {
+            const boardValue = soloGame.gameState.board[targetTileId];
+            const isUnclaimed = boardValue === undefined;
+            const isOwnedByPlayer = boardValue === 0; // Player 0 in solo game
+            
+            console.log(`Checking tile ${targetTileId}: board=${boardValue}, unclaimed=${isUnclaimed}, owned=${isOwnedByPlayer}`);
+            
+            if (!isUnclaimed && !isOwnedByPlayer) {
+              socket.emit('error', `Tile ${targetTileId} is not available`);
+              return;
+            }
+          }
+        }
+        
+        // Check money (for multi-tile assets, check total cost)
+        const totalCost = tilesToPlace.length * asset.price;
+        if (player.money < totalCost) {
+          socket.emit('error', 'Nicht genug Geld');
+          return;
+        }
+        
+        // Place asset using AssetManager
+        try {
+          AssetManager.placeAsset(player, centerTileId, type, soloGame.gameState);
+          
+          // For multi-tile assets, manually place on additional tiles
+          if (asset.slots > 1) {
+            for (let i = 1; i < tilesToPlace.length; i++) {
+              const additionalTileId = tilesToPlace[i];
+              player.slots[additionalTileId] = {
+                assetType: type,
+                guestCount: 0,
+                capacity: asset.capacity || 0,
+                npcs: [],
+                builtAt: Date.now(),
+                occupiedBy: centerTileId // Mark as occupied by main tile
+              };
+              soloGame.gameState.board[additionalTileId] = 0; // Player 0 owns this tile
+            }
+          }
+        } catch (error) {
+          socket.emit('error', error.message);
+          return;
+        }
+        
+        console.log('Asset placed on tiles:', tilesToPlace);
+        console.log('Player slots after placement:', player.slots);
+        console.log('Board state after placement:', soloGame.gameState.board);
+        console.log('=== END BUY ASSET DEBUG ===');
+        
+        socket.emit('gameState', soloGame.gameState);
+        return;
+      }
+    } catch (error) {
+      console.error('Error in buyAsset handler:', error);
+      socket.emit('error', 'Server error: ' + error.message);
+    }
+  });
+
+  socket.on('buyTile', ({ tileId }) => {
+    console.log('[BUY TILE] Attempting to buy tile:', tileId);
+    console.log('[BUY TILE] soloGame exists:', !!soloGame);
+    console.log('[BUY TILE] Socket ID:', socket.id);
+    
     // Handle solo game
     if (soloGame) {
+      console.log('[BUY TILE] Using solo game handler');
       const player = soloGame.gameState.players[0];
-      const asset = ASSETS[type];
       
-      if (!asset) {
-        socket.emit('error', 'Unbekannter Asset-Typ');
+      console.log('[BUY TILE] Current board state:', soloGame.gameState.board);
+      console.log('[BUY TILE] Current player slots:', player.slots);
+      
+      // In solo games, only check if player already has this tile in slots
+      // Don't show error for unclaimed tiles - just allow the purchase
+      const slot = player.slots && player.slots[tileId];
+      if (slot) {
+        console.log('[BUY TILE] Tile already in player slots:', slot);
+        // Don't show error for solo games - just silently ignore duplicate purchases
+        console.log('[BUY TILE] Silently ignoring duplicate tile purchase');
         return;
-      }
-      
-      const targetTileId = tileId;
-      const slot = player.slots && player.slots[targetTileId];
-      
-      if (!slot) {
-        socket.emit('error', 'Du besitzt dieses Feld nicht');
-        return;
-      }
-      
-      if (slot.assetType) {
-        socket.emit('error', 'Feld bereits belegt');
-        return;
+      } else {
+        console.log('[BUY TILE] Tile is new, proceeding with purchase');
       }
       
       // Check money
-      if (player.money < asset.price) {
+      if (player.money < 100) {
+        console.log('[BUY TILE] Not enough money:', player.money);
         socket.emit('error', 'Nicht genug Geld');
         return;
       }
       
-      // Buy asset
-      player.money -= asset.price;
-      player.slots[targetTileId] = { 
-        assetType: type, 
-        guestCount: 0,
-        capacity: asset.capacity || 0
-      };
+      console.log('[BUY TILE] Buying tile - updating board and slots');
       
-      socket.emit('soloStarted', {
-        gameState: soloGame.gameState,
-        myPlayerIndex: 0
-      });
+      // Buy tile
+      player.money -= 100;
+      player.slots[tileId] = { assetType: null, guestCount: 0, capacity: 0 };
+      soloGame.gameState.board[tileId] = 0; // Player 0 owns this tile
+      
+      console.log('[BUY TILE] Tile purchased successfully');
+      console.log('[BUY TILE] Updated board state:', soloGame.gameState.board);
+      console.log('[BUY TILE] Updated player slots:', player.slots);
+      
+      // Send game state update instead of full game restart
+      console.log('[BUY TILE] Emitting gameState event');
+      socket.emit('gameState', soloGame.gameState);
       return;
+    } else {
+      console.log('[BUY TILE] Using multiplayer game handler');
+      // Handle multiplayer game
+      const p = players.get(socket.id);
+      if (!p) return;
+      
+      const lobby = lobbies.get(p.lobby);
+      if (!lobby || !lobby.gameState) return;
+      
+      const playerIndex = lobby.gameState.players.findIndex(pl => pl.id === p.playerId);
+      if (playerIndex !== lobby.gameState.currentPlayerIndex) return;
+      
+      const player = lobby.gameState.players[playerIndex];
+      
+      const slot = player.slots && player.slots[tileId];
+      
+      if (slot) {
+        console.log('[BUY TILE] Multiplayer: Tile already owned, showing error');
+        console.log('[BUY TILE] This should NOT be called for solo games!');
+        socket.emit('error', 'Feld ist bereits besetzt');
+        return;
+      } else {
+        console.log('[BUY TILE] Multiplayer: Tile is new, proceeding with purchase');
+      }
+      
+      // Check money
+      if (player.money < 100) {
+        socket.emit('error', 'Nicht genug Geld');
+        return;
+      }
+      
+      // Buy tile
+      player.money -= 100;
+      player.slots[tileId] = { assetType: null, guestCount: 0, capacity: 0 };
+      lobby.gameState.board[tileId] = playerIndex;
+      
+      io.to(p.lobby).emit('gameState', lobby.gameState);
+    }
+  });
+
+  socket.on('updateGameState', () => {
+    if (soloGame) {
+      socket.emit('gameState', soloGame.gameState);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+    
+    // Handle solo game cleanup
+    if (soloGame) {
+      soloGame = null;
     }
     
-    // Handle multiplayer game
+    // Handle multiplayer game cleanup
     const p = players.get(socket.id);
     if (!p) return;
     
     const lobby = lobbies.get(p.lobby);
-    if (!lobby || !lobby.gameState) return;
+    if (!lobby) return;
     
-    const playerIndex = lobby.gameState.players.findIndex(pl => pl.id === p.playerId);
-    if (playerIndex !== lobby.gameState.currentPlayerIndex) return;
-    
-    const player = lobby.gameState.players[playerIndex];
-    const asset = ASSETS[type];
-    
-    if (!asset) {
-      socket.emit('error', 'Unbekannter Asset-Typ');
-      return;
+    // Remove player from lobby
+    const playerIndex = lobby.players.findIndex(pl => pl.id === p.playerId);
+    if (playerIndex > -1) {
+      lobby.players.splice(playerIndex, 1);
     }
     
-    // If no tileId provided, find first empty owned tile
-    let targetTileId = tileId;
-    if (!targetTileId) {
-      for (const [tid, slot] of Object.entries(player.slots || {})) {
-        if (!slot.assetType) {
-          targetTileId = tid;
-          break;
-        }
-      }
+    // If no players left, delete lobby
+    if (lobby.players.length === 0) {
+      lobbies.delete(p.lobby);
+    } else {
+      io.to(p.lobby).emit('playerJoined', { players: lobby.players });
     }
     
-    if (!targetTileId) {
-      socket.emit('error', 'Kein freier Slot verfügbar');
-      return;
-    }
-    
-    const slot = player.slots && player.slots[targetTileId];
-    if (!slot) {
-      socket.emit('error', 'Du besitzt dieses Feld nicht');
-      return;
-    }
-    
-    if (slot.assetType) {
-      socket.emit('error', 'Feld bereits belegt');
-      return;
-    }
-    
-    // Check if player has enough tiles for the asset
-    if (!player.slots || Object.keys(player.slots).length < asset.slots) {
-      socket.emit('error', 'Nicht genug Felder für dieses Asset');
-      return;
-    }
-    
-    // Check money
-    if (player.money < asset.price) {
-      socket.emit('error', 'Nicht genug Geld');
-      return;
-    }
-    
-    // Buy asset - occupy required number of tiles
-    player.money -= asset.price;
-    
-    // Mark the main tile with the asset
-    if (!player.slots[targetTileId]) player.slots = {};
-    player.slots[targetTileId] = { 
-      assetType: type, 
-      guestCount: 0,
-      capacity: asset.capacity || 0
-    };
-    
-    // Mark additional tiles as occupied by this asset
-    if (asset.slots > 1) {
-      let marked = 1;
-      for (const [tid, s] of Object.entries(player.slots)) {
-        if (tid !== targetTileId && !s.assetType && !s.occupiedBy) {
-          player.slots[tid] = { ...player.slots[tid], occupiedBy: targetTileId };
-          marked++;
-          if (marked >= asset.slots) break;
-        }
-      }
-    }
-    
-    io.to(p.lobby).emit('gameState', lobby.gameState);
+    players.delete(socket.id);
   });
 
   socket.on('moveAsset', ({ fromTileId, toTileId }) => {
@@ -871,10 +989,7 @@ io.on('connection', (socket) => {
       player.slots[toTileId] = { ...fromSlot };
       delete player.slots[fromTileId];
       
-      socket.emit('soloStarted', {
-        gameState: soloGame.gameState,
-        myPlayerIndex: 0
-      });
+      socket.emit('gameState', soloGame.gameState);
       return;
     }
     
@@ -936,10 +1051,7 @@ io.on('connection', (socket) => {
       // Delete the asset
       delete player.slots[tileId];
       
-      socket.emit('soloStarted', {
-        gameState: soloGame.gameState,
-        myPlayerIndex: 0
-      });
+      socket.emit('gameState', soloGame.gameState);
       return;
     }
     
@@ -1025,10 +1137,7 @@ io.on('connection', (socket) => {
       const guest = generateGuest(type === 'generic' ? null : type);
       soloGame.gameState.npcs.push(guest);
       
-      socket.emit('soloStarted', {
-        gameState: soloGame.gameState,
-        myPlayerIndex: 0
-      });
+      socket.emit('gameState', soloGame.gameState);
       return;
     }
     
@@ -1073,10 +1182,7 @@ io.on('connection', (socket) => {
       npc.accepted = true;
       player.npcs.push(npc);
       
-      socket.emit('soloStarted', {
-        gameState: soloGame.gameState,
-        myPlayerIndex: 0
-      });
+      socket.emit('gameState', soloGame.gameState);
       return;
     }
     
@@ -1119,10 +1225,7 @@ io.on('connection', (socket) => {
       player.money -= cost;
       player.coins[type] = (player.coins[type] || 0) + 1;
       
-      socket.emit('soloStarted', {
-        gameState: soloGame.gameState,
-        myPlayerIndex: 0
-      });
+      socket.emit('gameState', soloGame.gameState);
       return;
     }
     

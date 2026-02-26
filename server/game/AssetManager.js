@@ -36,33 +36,50 @@ export class AssetManager {
   }
 
   /**
-   * Validate asset placement on a specific tile
+   * Check if a player can place an asset on a specific tile
    */
-  static canPlaceAsset(player, tileId, assetType) {
+  static canPlaceAsset(player, tileId, assetType, gameState) {
     const asset = ASSETS[assetType];
     if (!asset) return { canPlace: false, reason: 'Unknown asset type' };
     
-    // Check if player owns the tile
-    if (!player.slots || !player.slots[tileId]) {
+    // For multi-slot assets, check if we have enough adjacent owned & empty tiles
+    if (asset.slots > 1) {
+      const [q, r] = tileId.split(',').map(Number);
+      const neighbors = [
+        [q+1, r], [q-1, r], [q, r+1], [q, r-1], [q+1, r-1], [q-1, r+1]
+      ];
+      
+      let validAdjacentTiles = 0;
+      const checkedTiles = new Set();
+      
+      for (const [nq, nr] of neighbors) {
+        const neighborId = `${nq},${nr}`;
+        
+        // Count unique tiles that are either owned by player OR empty (unclaimed)
+        if (!checkedTiles.has(neighborId)) {
+          checkedTiles.add(neighborId);
+          
+          const isOwnedByPlayer = player.slots[neighborId] !== undefined;
+          const isUnclaimed = gameState.board[neighborId] === undefined;
+          
+          console.log(`Checking neighbor ${neighborId}: owned=${isOwnedByPlayer}, unclaimed=${isUnclaimed}`);
+          
+          if (isOwnedByPlayer || isUnclaimed) {
+            validAdjacentTiles++;
+          }
+        }
+      }
+      
+      console.log(`Valid adjacent tiles: ${validAdjacentTiles}, needed: ${asset.slots - 1}`);
+      
+      // We need at least (asset.slots - 1) valid adjacent tiles (since clicked tile counts as 1)
+      const canPlace = validAdjacentTiles >= (asset.slots - 1);
+      return { canPlace, reason: canPlace ? 'OK' : `Need ${asset.slots - 1} adjacent tiles, have ${validAdjacentTiles}` };
+    }
+    
+    // For single-slot assets, check if player owns the tile
+    if (!player.slots[tileId]) {
       return { canPlace: false, reason: 'You do not own this tile' };
-    }
-    
-    // Check if tile is empty
-    const slot = player.slots[tileId];
-    if (slot.assetType) {
-      return { canPlace: false, reason: 'Tile already occupied' };
-    }
-    
-    // Check affordability
-    const affordCheck = this.canAffordAsset(player, assetType);
-    if (!affordCheck.canAfford) {
-      return affordCheck;
-    }
-    
-    // Check slot requirements
-    const slotCheck = this.hasEnoughSlots(player, assetType);
-    if (!slotCheck.hasSlots) {
-      return slotCheck;
     }
     
     return { canPlace: true };
@@ -71,8 +88,8 @@ export class AssetManager {
   /**
    * Place an asset for a player
    */
-  static placeAsset(player, tileId, assetType) {
-    const validation = this.canPlaceAsset(player, tileId, assetType);
+  static placeAsset(player, tileId, assetType, gameState) {
+    const validation = this.canPlaceAsset(player, tileId, assetType, gameState);
     if (!validation.canPlace) {
       throw new Error(validation.reason);
     }
