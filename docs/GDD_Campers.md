@@ -182,6 +182,68 @@ User erstellen eine Lobby und generieren einen Beitrittscode, den sie an die and
 
 User können einen Beitrittscode eingeben und so einer erstellten Lobby beitretten.
 
+## UI Layout & Board Game Visualisierung
+
+### Board Game Ansatz
+Das Spiel wird als digitales Brettspiel visualisiert:
+- **Spielbrett**: Rechteckige Karte, komplett mit hexagonalen Feldern bedeckt
+- **Jedes Hex-Feld** = 1 Slot für den Campingplatz eines Spielers
+- **Startposition**: Jeder Spieler beginnt in der Mitte des Spielfelds
+- **Kompetition**: Spieler konkurrieren um Felder, um ihren Campingplatz zu vergrößern
+
+### UI Aufbau
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [💰€] [⚡] [💧]          ⛺ CAMPERS         [🏗️] [👥] [🏆] │
+│  ↑ Ressourcen            J1 Q1 R1            ↑ Popup-Buttons│
+└─────────────────────────────────────────────────────────────┘
+                            ╔═══════════╗
+                            ║  HEXGRID  ║
+                            ║  (Board)  ║
+                            ╚═══════════╝
+                              ↑ Spielbrett
+                              ↑ (Hex-Felder)
+```
+
+#### Top-Left: Ressourcen-Übersicht (kompakt)
+- 💰 Geld
+- ⚡ Strom  
+- 💧 Wasser
+
+#### Top-Right: Action-Buttons (öffnen Popups)
+- 🏗️ **Bauen & Kaufen** → Popup mit Assets und Slots kaufen
+- 👥 **Gäste** → Popup mit NPC-Anfragen und Münzen
+- 🏆 **Spieler** → Popup mit Rangliste/Statistiken
+
+#### Center: Spielbrett (Hex Grid)
+- Rechtechtiges Spielfeld mit hexagonalen Feldern
+- Jedes Feld ist ein Slot
+- Spieler sehen alle Felder
+- Felder zeigen Assets oder sind leer
+- Felder, die keinem Spieler zugeordnet sind und an den Campingplatz des Spielers angrenzen können durch einen Click auf das Feld gekauft werden
+
+#### Bottom: Zug beenden Button
+
+### Popup-Panels
+
+#### Bauen & Kaufen Panel
+Wird durch Klick auf 🏗️ geöffnet:
+- Assets kaufen (und anschließend auf der Karte auf freien, dem Spieler gehörenden Slots platzieren )
+- Upgrades durchführen
+
+#### Gäste Panel
+Wird durch Klick auf 👥 geöffnet:
+- Münzen anzeigen (Generisch, Hippie, Familie, Snob)
+- NPC-Anfragen anzeigen und annehmen/ablehnen
+- Gäste platzieren oder entfernen
+
+#### Spieler Panel
+Wird durch Klick auf 🏆 geöffnet:
+- Rangliste aller Spieler
+- Statistiken (Einnahmen, Gäste, Campingplatz-Größe)
+
+
 ## Slot Logik
 
 Anstelle der Flächenanzeige in der Ressourcen übersicht sehen User nun die Anzahl ihrer Fläche über Slots, welche leer sind wenn sie frei sind, oder das sich auf ihnen befindende Asset anzeigen wenn sie belegt sind.
