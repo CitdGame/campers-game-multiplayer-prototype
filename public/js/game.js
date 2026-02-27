@@ -1,3 +1,18 @@
+// Asset definitions for frontend - defined FIRST so it's available everywhere
+const ASSETS = {
+  tent: { price: 50, slots: 1, capacity: 2, upgradeTo: 'glamping', upgradePrice: 50 },
+  glamping: { price: 100, slots: 1, capacity: 4 },
+  caravan: { price: 150, slots: 2, capacity: 4 },
+  bungalow: { price: 300, slots: 3, capacity: 6, upgradeTo: 'luxurybungalow', upgradePrice: 200 },
+  luxurybungalow: { price: 500, slots: 3, capacity: 8 },
+  generator: { price: 200, slots: 2 },
+  watertank: { price: 150, slots: 2 },
+  sportsfield: { price: 250, slots: 3 },
+  campfire: { price: 100, slots: 1 },
+  sauna: { price: 350, slots: 2 },
+  stage: { price: 400, slots: 3 }
+};
+
 const socket = io({ path: '/socket.io' });
 
 socket.on('connect_error', (err) => {
@@ -14,9 +29,71 @@ let gameState = null;
 let lobbyCode = '';
 let isSolo = false;
 let selectedTile = null; // Currently selected tile for placing assets
+let hoveredTile = null; // Currently hovered tile
 let movingAsset = false; // Whether we're in asset moving mode
 let heldAsset = null; // Asset currently held by player (for new building flow)
 let placementMode = false; // Whether we're in asset placement mode
+let assetOrientation = 0; // 0=right, 1=down, 2=left, 3=up
+
+// Get tiles for an asset based on orientation
+function getTilesForOrientation(centerTileId, slots, orientation) {
+  const tiles = [centerTileId];
+  const [q, r] = centerTileId.split(',').map(Number);
+  
+  // Direction offsets for square grid: 0=right, 1=down, 2=left, 3=up
+  const directions = [
+    [1, 0],   // 0: right
+    [0, 1],   // 1: down
+    [-1, 0],  // 2: left
+    [0, -1]   // 3: up
+  ];
+  
+  const dir = directions[orientation];
+  
+  for (let i = 1; i < slots; i++) {
+    const nq = q + (dir[0] * i);
+    const nr = r + (dir[1] * i);
+    tiles.push(`${nq},${nr}`);
+  }
+  
+  return tiles;
+}
+
+// Check if tiles are valid for placement (owned and empty)
+function areTilesValidForPlacement(tiles, playerSlots, oldTiles = []) {
+  for (const tileId of tiles) {
+    // Allow if it's in the old tiles list (reusing old position)
+    if (oldTiles.includes(tileId)) continue;
+    
+    const slot = playerSlots?.[tileId];
+    if (!slot || slot.assetType || slot.occupiedBy) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Update canPlaceAsset to accept old tiles for moving
+function canPlaceAsset(tileId, asset, playerSlots, oldTiles = []) {
+  if (asset.slots === 1) return true; // Single slot assets can always be placed
+  
+  // Calculate tiles based on orientation
+  const tiles = getTilesForOrientation(tileId, asset.slots, assetOrientation);
+  
+  console.log('Checking placement for tile:', tileId, 'orientation:', assetOrientation, 'tiles:', tiles, 'oldTiles:', oldTiles);
+  
+  // Check if all tiles are valid (owned and empty, or in old tiles)
+  const isValid = areTilesValidForPlacement(tiles, playerSlots, oldTiles);
+  console.log('Can place:', isValid);
+  
+  return isValid;
+}
+
+// Get orientation name for display
+function getOrientationName(orientation) {
+  const names = ['→ Rechts', '↓ Unten', '← Links', '↑ Oben'];
+  return names[orientation];
+}
 
 const urlParams = new URLSearchParams(window.location.search);
 
@@ -50,6 +127,9 @@ socket.on('soloStarted', (data) => {
   gameState = data.gameState;
   document.getElementById('gamePage').style.display = 'block';
   updateGameUI();
+  if (data.gameState.npcs) {
+    updateGuestBadges(data.gameState.npcs.length);
+  }
   
   // Initialize canvas after gamePage is visible
   setTimeout(() => {
@@ -62,6 +142,13 @@ socket.on('gameState', (data) => {
   gameState = data;
   updateGameUI();
   renderHexGrid();
+  if (data.npcs) {
+    updateGuestBadges(data.npcs.length);
+  }
+  // Refresh guest panel if open
+  if (document.getElementById('guestPanel').classList.contains('active')) {
+    renderGuestPanel();
+  }
 });
 
 const playerIcons = ['🏕️','🎒','🌲','🔥','🎣','⛺','🌻','🏔️'];
@@ -192,6 +279,13 @@ socket.on('gameState', (data) => {
   } else {
     setTimeout(() => initHexCanvas(), 100);
   }
+  if (data.npcs) {
+    updateGuestBadges(data.npcs.length);
+  }
+  // Refresh guest panel if open
+  if (document.getElementById('guestPanel').classList.contains('active')) {
+    renderGuestPanel();
+  }
 });
 
 function startGame() {
@@ -300,6 +394,49 @@ function setupCameraControls() {
   });
   
   board.addEventListener('mousemove', (e) => {
+    // Track hovered tile when in placement or moving mode
+    if (placementMode || movingAsset) {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      
+      const viewOffsetX = (rect.width / 2) / view.scale - view.x;
+      const viewOffsetY = (rect.height / 2) / view.scale - view.y;
+     
+      const canvasX = clickX / view.scale + viewOffsetX;
+      const canvasY = clickY / view.scale + viewOffsetY;
+      
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      // Find the tile under the mouse
+      let foundTile = null;
+      for (let row = -MAP_RADIUS; row <= MAP_RADIUS; row++) {
+        for (let col = -MAP_RADIUS; col <= MAP_RADIUS; col++) {
+          const q = col;
+          const r = row;
+          const s = -q - r;
+          
+          if (Math.abs(q) > MAP_RADIUS || Math.abs(r) > MAP_RADIUS || Math.abs(s) > MAP_RADIUS) continue;
+          
+          const x = centerX + (q - r) * (TILE_WIDTH / 2);
+          const y = centerY + (q + r) * (TILE_HEIGHT / 2);
+          
+          const dist = Math.sqrt((canvasX - x) ** 2 + (canvasY - y) ** 2);
+          if (dist < HEX_SIZE * 0.9) {
+            foundTile = q + ',' + r;
+            break;
+          }
+        }
+        if (foundTile) break;
+      }
+      
+      if (hoveredTile !== foundTile) {
+        hoveredTile = foundTile;
+        renderHexGrid();
+      }
+    }
+    
     if (isDragging && cameraMode) {
       view.x += (e.clientX - dragStart.x) / view.scale;
       view.y += (e.clientY - dragStart.y) / view.scale;
@@ -317,6 +454,10 @@ function setupCameraControls() {
   board.addEventListener('mouseleave', () => {
     isDragging = false;
     board.style.cursor = cameraMode ? 'grab' : 'pointer';
+    if (placementMode || movingAsset) {
+      hoveredTile = null;
+      renderHexGrid();
+    }
   });
   
   board.style.cursor = cameraMode ? 'grab' : 'pointer';
@@ -367,11 +508,12 @@ function renderHexGrid() {
       
       drawIsometricHex(x, y, isMine, isUnclaimed, canBuy, ownerIndex, tileId, player);
       
-      // Draw asset if owned
+      // Draw asset if owned - but skip tiles that are part of a multi-tile asset (they're drawn on the main tile)
       if (isMine && player.slots) {
         const slot = player.slots[tileId];
-        if (slot && slot.assetType) {
-          drawIsometricAsset(x, y, slot);
+        // Only draw on main tile (no occupiedBy) or single-tile assets
+        if (slot && slot.assetType && !slot.occupiedBy) {
+          drawIsometricAsset(x, y, slot, tileId, player.slots);
         }
       }
     }
@@ -509,20 +651,106 @@ function drawIsometricHex(x, y, isMine, isUnclaimed, canBuy, ownerIndex, tileId,
     }
   }
   
-  // Show valid drop targets when moving
-  if (movingAsset && selectedTile && tileId !== selectedTile && isMine && !isUnclaimed) {
+  // Show valid drop targets when moving - highlight hovered tile
+  if (movingAsset && selectedTile && tileId === hoveredTile && isMine && !isUnclaimed) {
     const player = gameState.players[myPlayerIndex];
     const slot = player.slots && player.slots[tileId];
     if (slot && !slot.assetType) {
-      // Show green highlight for valid drop targets
+      // Show green highlight for valid drop target
       ctx.strokeStyle = '#4CAF50';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 4;
       ctx.stroke();
       
-      // Animated glow for drop targets
-      ctx.strokeStyle = 'rgba(76, 175, 80, 0.3)';
-      ctx.lineWidth = 8;
+      // Animated glow for drop target
+      ctx.strokeStyle = 'rgba(76, 175, 80, 0.4)';
+      ctx.lineWidth = 12;
       ctx.stroke();
+    }
+  }
+  
+  // HOVER HIGHLIGHTING - Show which tiles will be occupied when hovering
+  if (hoveredTile && (placementMode || movingAsset)) {
+    const player = gameState.players[myPlayerIndex];
+    
+    // Calculate which tiles would be occupied based on hovered position and orientation
+    let tilesToOccupy = [];
+    let canPlaceHover = false;
+    
+    if (placementMode && heldAsset) {
+      // Building mode - use heldAsset
+      tilesToOccupy = getTilesForAsset(hoveredTile, heldAsset, player.slots);
+      canPlaceHover = canPlaceAsset(hoveredTile, heldAsset, player.slots);
+    } else if (movingAsset && selectedTile) {
+      // Moving mode - need to get the asset from the selected tile
+      const selectedSlot = player.slots && player.slots[selectedTile];
+      if (selectedSlot && selectedSlot.assetType) {
+        const movingAssetData = ASSETS[selectedSlot.assetType];
+        if (movingAssetData) {
+          // Get old tiles that will be freed when moving
+          const oldTiles = selectedSlot.tiles || [selectedTile];
+          tilesToOccupy = getTilesForAsset(hoveredTile, movingAssetData, player.slots);
+          canPlaceHover = canPlaceAsset(hoveredTile, movingAssetData, player.slots, oldTiles);
+        }
+      }
+    }
+    
+    // Check if current tile is in the hover footprint
+    if (tilesToOccupy.length > 0) {
+      const isHovered = tileId === hoveredTile;
+      const isInFootprint = tilesToOccupy.includes(tileId);
+      
+      if (isHovered || isInFootprint) {
+        // Highlight color based on validity
+        const highlightColor = canPlaceHover ? '#4CAF50' : '#F44336';
+        const glowColor = canPlaceHover ? 'rgba(76, 175, 80, 0.4)' : 'rgba(244, 67, 54, 0.4)';
+        
+        // Draw thick highlight border
+        ctx.strokeStyle = highlightColor;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        
+        // Draw glow effect
+        ctx.strokeStyle = glowColor;
+        ctx.lineWidth = 10;
+        ctx.stroke();
+        
+        // If it's the main (hovered) tile, show asset preview
+        if (isHovered && canPlaceHover) {
+          let assetType = null;
+          if (placementMode && heldAsset) {
+            assetType = heldAsset.type;
+          } else if (movingAsset && selectedTile) {
+            const selectedSlot = player.slots && player.slots[selectedTile];
+            if (selectedSlot) assetType = selectedSlot.assetType;
+          }
+          
+          if (assetType) {
+            const icon = getAssetIcon(assetType);
+            ctx.font = '28px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.globalAlpha = 0.8;
+            ctx.fillText(icon, x, y - 10);
+            ctx.globalAlpha = 1.0;
+          }
+        }
+        
+        // Show label for main tile
+        if (isHovered) {
+          ctx.fillStyle = canPlaceHover ? 'rgba(76, 175, 80, 0.9)' : 'rgba(244, 67, 54, 0.9)';
+          ctx.font = 'bold 12px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(canPlaceHover ? '✓' : '✗', x, y + 25);
+        }
+        
+        // Show small indicator for footprint tiles
+        if (isInFootprint && !isHovered) {
+          ctx.fillStyle = canPlaceHover ? 'rgba(76, 175, 80, 0.5)' : 'rgba(244, 67, 54, 0.5)';
+          ctx.beginPath();
+          ctx.arc(x, y, 8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
   }
   
@@ -614,7 +842,7 @@ function drawIsometricHex(x, y, isMine, isUnclaimed, canBuy, ownerIndex, tileId,
   }
 }
 
-function drawIsometricAsset(x, y, slot) {
+function drawIsometricAsset(x, y, slot, tileId, allSlots) {
   const hw = TILE_WIDTH / 2;
   const hh = TILE_HEIGHT / 2;
   
@@ -634,32 +862,93 @@ function drawIsometricAsset(x, y, slot) {
   
   const icon = assetIcons[slot.assetType] || '📦';
   
-  // Draw shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath();
-  ctx.ellipse(x, y + hh - 5, hw * 0.5, hh * 0.3, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // Check if this is a multi-tile asset
+  const isMultiTile = slot.tiles && slot.tiles.length > 1;
   
-  // Draw asset icon (slightly raised)
-  ctx.font = '28px Arial';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(icon, x, y - 10);
+  if (isMultiTile && tileId && allSlots) {
+    // Calculate center position of all tiles in the asset
+    // Use x, y passed to function which are the canvas coordinates of this tile
+    const boardCenterX = canvas.width / 2;
+    const boardCenterY = canvas.height / 2;
+    
+    let totalX = 0, totalY = 0;
+    const tilePositions = [];
+    
+    for (const tid of slot.tiles) {
+      const [q, r] = tid.split(',').map(Number);
+      const tx = boardCenterX + (q - r) * (TILE_WIDTH / 2);
+      const ty = boardCenterY + (q + r) * (TILE_HEIGHT / 2);
+      totalX += tx;
+      totalY += ty;
+      tilePositions.push({ x: tx, y: ty });
+    }
+    
+    const centerX_merged = totalX / slot.tiles.length;
+    const centerY_merged = totalY / slot.tiles.length;
+    
+    // Draw merged tile background (larger to cover all tiles)
+    ctx.fillStyle = 'rgba(124, 179, 66, 0.8)';
+    ctx.beginPath();
+    ctx.ellipse(centerX_merged, centerY_merged, hw * slot.tiles.length * 0.6, hh * slot.tiles.length * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw border around merged tiles
+    ctx.strokeStyle = '#33691E';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(centerX_merged, centerY_merged, hw * slot.tiles.length * 0.6, hh * slot.tiles.length * 0.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Draw the asset icon at the merged center
+    ctx.font = `${28 + slot.tiles.length * 4}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(icon, centerX_merged, centerY_merged - 10);
+    
+    // Draw guest count if occupied
+    if (slot.guestCount > 0) {
+      ctx.font = 'bold 12px Arial';
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(centerX_merged + hw * 0.5, centerY_merged - hh * 0.5, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#000';
+      ctx.fillText(slot.guestCount, centerX_merged + hw * 0.5, centerY_merged - hh * 0.5);
+    }
+  } else {
+    // Single tile asset - original drawing
+    // Draw shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + hh - 5, hw * 0.5, hh * 0.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw asset icon (slightly raised)
+    ctx.font = '28px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(icon, x, y - 10);
   
-  // Draw guest count if occupied
-  if (slot.guestCount > 0) {
-    ctx.font = 'bold 12px Arial';
-    ctx.fillStyle = '#fff';
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 2;
-    ctx.fillText(`👥${slot.guestCount}`, x, y + hh - 8);
-    ctx.strokeText(`👥${slot.guestCount}`, x, y + hh - 8);
+    // Draw guest count if occupied
+    if (slot.guestCount > 0) {
+      ctx.font = 'bold 12px Arial';
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 2;
+      ctx.fillText(`👥${slot.guestCount}`, x, y + hh - 8);
+      ctx.strokeText(`👥${slot.guestCount}`, x, y + hh - 8);
+    }
   }
 }
 
-function checkAdjacent(tileId, playerIndex) {
-  const player = gameState.players[playerIndex];
-  if (!player.slots) return false;
+function checkAdjacent(tileId, playerIndex, board, slots) {
+  // Support both old 2-arg and new 4-arg calls
+  // When 4 args: board=gameState.board, slots=player.slots
+  const playerSlots = arguments.length >= 4 ? slots : gameState.players[playerIndex]?.slots;
+  if (!playerSlots) return false;
   
   const [q, r] = tileId.split(',').map(Number);
   
@@ -671,7 +960,7 @@ function checkAdjacent(tileId, playerIndex) {
   // Check if any neighbor is owned by player
   for (const [nq, nr] of neighbors) {
     const neighborId = String(nq) + ',' + String(nr);
-    if (player.slots[neighborId]) {
+    if (playerSlots[neighborId]) {
       return true;
     }
   }
@@ -738,7 +1027,7 @@ canvas.addEventListener('click', function(e) {
               
               // Place asset on multiple tiles
               console.log('Emitting buyAsset event...');
-              socket.emit('buyAsset', { type: heldAsset.type, tileId: tilesToOccupy });
+              socket.emit('buyAsset', { type: heldAsset.type, tileId: tilesToOccupy, orientation: assetOrientation });
               cancelPlacement();
               return;
             } else {
@@ -761,13 +1050,27 @@ canvas.addEventListener('click', function(e) {
         
         // Select empty owned tile for asset placement or handle asset moving
         if (ownerIndex === myPlayerIndex && player.slots && player.slots[tileId]) {
-          const slot = player.slots[tileId];
+          let slot = player.slots[tileId];
+          let actualTileId = tileId;
+          
+          console.log('[CLIENT] Clicked on owned tile:', tileId, 'slot:', slot);
+          
+          // If this tile is occupied by another (part of multi-tile asset), use the main tile
+          if (slot && slot.occupiedBy) {
+            actualTileId = slot.occupiedBy;
+            slot = player.slots[actualTileId];
+            console.log('[CLIENT] Using main tile:', actualTileId, 'slot:', slot);
+          }
+          
           if (!slot || !slot.assetType) {
             // Handle asset moving
             if (movingAsset && selectedTile && selectedTile !== tileId) {
-              socket.emit('moveAsset', { fromTileId: selectedTile, toTileId: tileId });
+              console.log('[CLIENT] Emitting moveAsset:', selectedTile, '->', tileId);
+              socket.emit('moveAsset', { fromTileId: selectedTile, toTileId: tileId, orientation: assetOrientation });
               cancelMoveAsset();
               return;
+            } else if (movingAsset) {
+              console.log('[CLIENT] Move check failed - movingAsset:', movingAsset, 'selectedTile:', selectedTile, 'tileId:', tileId);
             }
             
             // Normal tile selection for asset placement
@@ -777,7 +1080,8 @@ canvas.addEventListener('click', function(e) {
           }
           
           // Show asset details modal for placed assets
-          showAssetDetails(tileId, slot);
+          console.log('[CLIENT] Showing asset details for:', actualTileId, 'slot:', slot);
+          showAssetDetails(actualTileId, slot);
           return;
         }
         
@@ -793,9 +1097,24 @@ canvas.addEventListener('click', function(e) {
           return;
         }
         
-        if (ownerIndex === undefined && checkAdjacent(tileId, myPlayerIndex, gameState.board, player.slots)) {
+        // Check if tile is unclaimed and player has money
+        const playerMoney = player.money || 0;
+        const hasMoney = playerMoney >= 100;
+        
+        // Check adjacency OR allow first purchase (when player has no tiles yet)
+        const ownedTileCount = player.slots ? Object.keys(player.slots).length : 0;
+        const isFirstTile = ownedTileCount === 0;
+        const isAdjacent = checkAdjacent(tileId, myPlayerIndex);
+        
+        if (ownerIndex === undefined && (isAdjacent || isFirstTile) && hasMoney) {
           console.log('[CLIENT] Emitting buyTile for:', tileId);
           socket.emit('buyTile', { tileId: tileId });
+          return;
+        } else if (ownerIndex === undefined && !hasMoney) {
+          showError('Nicht genug Geld! Du brauchst 100€ um ein Feld zu kaufen.');
+          return;
+        } else if (ownerIndex === undefined && !isAdjacent && !isFirstTile) {
+          showError('Das Feld muss an deinen Campingplatz angrenzen!');
           return;
         }
         
@@ -891,6 +1210,22 @@ function closeGuestPanel() {
   document.getElementById('guestPanel').classList.remove('active');
 }
 
+function updateGuestBadges(count) {
+  // Update modal header badge
+  const modalBadge = document.getElementById('requestCountBadge');
+  if (modalBadge) {
+    modalBadge.textContent = count;
+    modalBadge.style.display = count > 0 ? 'inline-block' : 'none';
+  }
+  
+  // Update button badge
+  const btnBadge = document.getElementById('guestBtnBadge');
+  if (btnBadge) {
+    btnBadge.textContent = count;
+    btnBadge.style.display = count > 0 ? 'block' : 'none';
+  }
+}
+
 function renderGuestPanel() {
   if (!gameState) return;
   const player = gameState.players[myPlayerIndex];
@@ -900,6 +1235,10 @@ function renderGuestPanel() {
   document.getElementById('coinFamilie').textContent = player.coins.Familie || 0;
   document.getElementById('coinSnob').textContent = player.coins.Snob || 0;
   
+  // Update request count badge
+  const requestCount = gameState.npcs ? gameState.npcs.length : 0;
+  updateGuestBadges(requestCount);
+  
   const npcList = document.getElementById('npcList');
   let html = '';
   
@@ -908,20 +1247,51 @@ function renderGuestPanel() {
     html += '<div style="font-weight:700;margin:10px 0 5px;">Anfragen:</div>';
     for (const npc of gameState.npcs) {
       const typeIcon = { 'Hippies': '🌿', 'Familie': '👨‍👩‍👧‍👦', 'Snob': '👑' }[npc.type] || '🪙';
+      const totalEarnings = npc.income * npc.stayDuration;
+      const preferredAsset = getPreferredAsset(npc.type);
+      
+      // Check if player can fulfill needs
+      const canFulfill = player.electric >= npc.needs.electric && player.water >= npc.needs.water;
+      const needColor = canFulfill ? '#4caf50' : '#f44336';
+      const needIcon = canFulfill ? '✓' : '✗';
+      
       html += `
-        <div style="background:#fff;border:1px solid #ddd;padding:10px;margin:5px 0;border-radius:8px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span><b>${npc.name}</b> ${typeIcon}</span>
-            <span style="color:#666;">${npc.guests} Pers., ${npc.stayDuration} Nächte</span>
+        <div style="background:#fff;border:1px solid #ddd;padding:12px;margin:5px 0;border-radius:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:16px;"><b>${npc.name}</b> ${typeIcon}</span>
+            <span style="background:#e3f2fd;padding:3px 8px;border-radius:12px;font-size:12px;">${npc.guests} Pers.</span>
           </div>
-          <div style="font-size:12px;color:#888;">Einkommen: ${npc.income}€/Nacht | Bedarf: ⚡${npc.needs.electric} 💧${npc.needs.water}</div>
-          ${npc.special ? `<div style="font-size:11px;color:#e67e22;">Sonderwunsch: ${npc.special}</div>` : ''}
-          <button class="btn btn-green" style="margin-top:5px;padding:5px 15px;" onclick="acceptNPC('${npc.id}')">Annehmen</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:8px;">
+            <div style="background:#f5f5f5;padding:8px;border-radius:6px;">
+              <div style="color:#888;">Aufenthalt</div>
+              <div style="font-weight:bold;">${npc.stayDuration} Nächte</div>
+            </div>
+            <div style="background:#f5f5f5;padding:8px;border-radius:6px;">
+              <div style="color:#888;">Einkommen</div>
+              <div style="font-weight:bold;color:var(--green-dark);">${totalEarnings}€ total</div>
+              <div style="color:#666;">${npc.income}€/Nacht</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:8px;">
+            <div style="background:#fff3e0;padding:8px;border-radius:6px;">
+              <div style="color:#888;">⚡ Strom</div>
+              <div style="font-weight:bold;color:${needColor};">${npc.needs.electric} <span style="color:${needColor};">${needIcon}</span></div>
+              <div style="color:#666;">Du: ${player.electric}</div>
+            </div>
+            <div style="background:#e0f7fa;padding:8px;border-radius:6px;">
+              <div style="color:#888;">💧 Wasser</div>
+              <div style="font-weight:bold;color:${needColor};">${npc.needs.water} <span style="color:${needColor};">${needIcon}</span></div>
+              <div style="color:#666;">Du: ${player.water}</div>
+            </div>
+          </div>
+          ${preferredAsset ? `<div style="font-size:11px;color:#666;margin-bottom:8px;">🏠 Bevorzugt: ${preferredAsset}</div>` : ''}
+          ${npc.special ? `<div style="font-size:11px;color:#e67e22;margin-bottom:8px;">⭐ Sonderwunsch: ${npc.special}</div>` : ''}
+          <button class="btn btn-green" style="width:100%;padding:8px;" onclick="acceptNPC('${npc.id}')">Annehmen</button>
         </div>
       `;
     }
   } else {
-    html += '<div style="color:#888;padding:10px;">Keine Anfragen verfügbar</div>';
+    html += '<div style="color:#888;padding:20px;text-align:center;background:#f5f5f5;border-radius:8px;margin-top:10px;">Keine Anfragen verfügbar</div>';
   }
   
   // Accepted NPCs - show where they are placed or allow placement
@@ -929,25 +1299,52 @@ function renderGuestPanel() {
     html += '<div style="font-weight:700;margin:15px 0 5px;">Deine Gäste:</div>';
     for (const npc of player.npcs) {
       const typeIcon = { 'Hippies': '🌿', 'Familie': '👨‍👩‍👧‍👦', 'Snob': '👑' }[npc.type] || '🪙';
+      const totalEarnings = npc.income * npc.stayDuration;
+      const earnedSoFar = npc.income * (npc.nightsStayed || 0);
+      
       if (npc.placed) {
+        const assetName = getAssetName(npc.tileId ? player.slots?.[npc.tileId]?.assetType : '', true);
         html += `
-          <div style="background:#e8f5e9;border:1px solid #4caf50;padding:10px;margin:5px 0;border-radius:8px;">
-            <div style="display:flex;justify-content:space-between;">
-              <span><b>${npc.name}</b> ${typeIcon}</span>
-              <span>${npc.stayDuration} Nächte</span>
+          <div style="background:#e8f5e9;border:1px solid #4caf50;padding:12px;margin:5px 0;border-radius:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:16px;"><b>${npc.name}</b> ${typeIcon}</span>
+              <span style="background:#c8e6c9;padding:3px 8px;border-radius:12px;font-size:12px;">${npc.guests} Pers.</span>
             </div>
-            <div style="font-size:12px;color:#666;">📍 Auf Platz</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:8px;">
+              <div style="background:#fff;padding:8px;border-radius:6px;">
+                <div style="color:#888;">📍 Unterkunft</div>
+                <div style="font-weight:bold;">${assetName}</div>
+              </div>
+              <div style="background:#fff;padding:8px;border-radius:6px;">
+                <div style="color:#888;">⏱️ Nächte</div>
+                <div style="font-weight:bold;">${npc.nightsRemaining || npc.stayDuration} übrig</div>
+              </div>
+            </div>
+            <div style="font-size:12px;display:flex;justify-content:space-between;">
+              <span style="color:#4caf50;">💰 ${earnedSoFar}€ verdient</span>
+              <span style="color:#888;">${totalEarnings}€ total möglich</span>
+            </div>
           </div>
         `;
       } else {
         html += `
-          <div style="background:#fff3e0;border:1px solid #ff9800;padding:10px;margin:5px 0;border-radius:8px;">
-            <div style="display:flex;justify-content:space-between;">
-              <span><b>${npc.name}</b> ${typeIcon}</span>
-              <span>${npc.stayDuration} Nächte</span>
+          <div style="background:#fff3e0;border:1px solid #ff9800;padding:12px;margin:5px 0;border-radius:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:16px;"><b>${npc.name}</b> ${typeIcon}</span>
+              <span style="background:#ffe0b2;padding:3px 8px;border-radius:12px;font-size:12px;">${npc.guests} Pers.</span>
             </div>
-            <div style="font-size:12px;color:#666;">Noch nicht platziert - wähle ein Feld zum Platzieren</div>
-            <button class="btn btn-orange" style="margin-top:5px;padding:5px 15px;" onclick="promptPlaceNPC('${npc.id}')">Platzieren</button>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:8px;">
+              <div style="background:#fff;padding:8px;border-radius:6px;">
+                <div style="color:#888;">Aufenthalt</div>
+                <div style="font-weight:bold;">${npc.stayDuration} Nächte</div>
+              </div>
+              <div style="background:#fff;padding:8px;border-radius:6px;">
+                <div style="color:#888;">Einkommen</div>
+                <div style="font-weight:bold;color:var(--green-dark);">${totalEarnings}€ total</div>
+              </div>
+            </div>
+            <div style="font-size:12px;color:#666;margin-bottom:8px;">Noch nicht platziert</div>
+            <button class="btn btn-orange" style="width:100%;padding:8px;" onclick="promptPlaceNPC('${npc.id}')">Platzieren</button>
           </div>
         `;
       }
@@ -955,6 +1352,32 @@ function renderGuestPanel() {
   }
   
   npcList.innerHTML = html;
+}
+
+function getPreferredAsset(type) {
+  const preferences = {
+    'Hippies': '⛺ Zelt oder 🏕️ Glamping',
+    'Familie': '🏕️ Glamping, 🚐 Caravan oder 🏠 Bungalow',
+    'Snob': '🏕️ Glamping oder 🏰 Luxus-Bungalow'
+  };
+  return preferences[type] || '';
+}
+
+function getAssetName(type, useIcon = false) {
+  const names = {
+    tent: useIcon ? '⛺ Zelt' : 'Zelt',
+    glamping: useIcon ? '🏕️ Glamping' : 'Glamping',
+    caravan: useIcon ? '🚐 Caravan' : 'Caravan',
+    bungalow: useIcon ? '🏠 Bungalow' : 'Bungalow',
+    luxurybungalow: useIcon ? '🏰 Luxus-Bungalow' : 'Luxus-Bungalow',
+    generator: useIcon ? '⚡ Generator' : 'Generator',
+    watertank: useIcon ? '💧 Wassertank' : 'Wassertank',
+    sportsfield: useIcon ? '⚽ Sportplatz' : 'Sportplatz',
+    campfire: useIcon ? '🔥 Lagerfeuer' : 'Lagerfeuer',
+    sauna: useIcon ? '🧖 Sauna' : 'Sauna',
+    stage: useIcon ? '🎭 Bühne' : 'Bühne'
+  };
+  return names[type] || type;
 }
 
 function promptPlaceNPC(npcId) {
@@ -1000,7 +1423,9 @@ function buySlot() {
 
 function buyAsset(type) {
   const player = gameState.players[myPlayerIndex];
+  console.log('[buyAsset] player.money:', player.money, 'type:', typeof player.money);
   const asset = ASSETS[type];
+  console.log('[buyAsset] asset.price:', asset.price, 'type:', typeof asset.price);
   
   // Check if player has enough money
   if (player.money < asset.price) {
@@ -1019,6 +1444,7 @@ function buyAsset(type) {
   heldAsset = { type, ...asset };
   placementMode = true;
   selectedTile = null;
+  assetOrientation = 0; // Reset orientation for new asset
   
   // Close build panel and show placement hint
   closeBuildPanel();
@@ -1050,9 +1476,10 @@ function showPlacementHint(asset) {
   `;
   
   const icon = getAssetIcon(asset.type);
+  const orientationText = asset.slots > 1 ? ` (${getOrientationName(assetOrientation)}) - R zum Drehen` : '';
   hint.innerHTML = `
     <div style="font-size: 24px; margin-bottom: 8px;">${icon}</div>
-    <div style="font-size: 14px;">Platziere ${asset.name || asset.type}</div>
+    <div style="font-size: 14px;">Platziere ${asset.name || asset.type}${orientationText}</div>
     <div style="font-size: 12px; opacity: 0.9; margin-top: 4px;">Klicke auf ${asset.slots} freie Slots</div>
     <button class="btn btn-red" style="margin-top: 10px; padding: 5px 15px; font-size: 12px;" onclick="cancelPlacement()">Abbrechen</button>
   `;
@@ -1135,91 +1562,15 @@ function getTilesForAsset(centerTileId, asset, playerSlots) {
     return [centerTileId]; // Single slot assets just use the clicked tile
   }
   
-  const [q, r] = centerTileId.split(',').map(Number);
+  // Use orientation to determine which tiles to use
+  const tiles = getTilesForOrientation(centerTileId, asset.slots, assetOrientation);
   
-  // Get all adjacent tiles that are owned by the player
-  const neighbors = [
-    `${q+1},${r}`,   // Right
-    `${q-1},${r}`,   // Left
-    `${q},${r+1}`,   // Bottom-right
-    `${q},${r-1}`,   // Top-left
-    `${q+1},${r-1}`,  // Top-right
-    `${q-1},${r+1}`   // Bottom-left
-  ];
-  
-  // Filter to only include tiles owned by the player
-  const ownedAdjacentTiles = neighbors.filter(neighborId => 
-    playerSlots && playerSlots[neighborId] !== undefined
-  );
-  
-  console.log('Center tile:', centerTileId, 'Owned adjacent tiles:', ownedAdjacentTiles);
-  
-  // Return the center tile plus enough owned adjacent tiles
-  const tiles = [centerTileId];
-  const neededTiles = asset.slots - 1;
-  const availableTiles = ownedAdjacentTiles.slice(0, neededTiles);
-  tiles.push(...availableTiles);
-  
-  console.log('Final tiles for asset:', tiles);
+  console.log('Center tile:', centerTileId, 'Orientation:', assetOrientation, 'Tiles:', tiles);
   
   return tiles;
 }
 
-function canPlaceAsset(tileId, asset, playerSlots) {
-  if (asset.slots === 1) return true; // Single slot assets can always be placed
-  
-  // For multi-slot assets, check if we have enough unique adjacent owned & empty tiles
-  const [q, r] = tileId.split(',').map(Number);
-  const neighbors = [
-    [q+1, r], [q-1, r], [q, r+1], [q, r-1], [q+1, r-1], [q-1, r+1]
-  ];
-  
-  let validAdjacentTiles = 0;
-  const checkedTiles = new Set();
-  
-  console.log('Checking placement for tile:', tileId, 'asset needs:', asset.slots, 'slots');
-  
-  for (const [nq, nr] of neighbors) {
-    const neighborId = `${nq},${nr}`;
-    
-    // Count unique tiles that are either owned by player OR empty (unclaimed)
-    if (!checkedTiles.has(neighborId)) {
-      checkedTiles.add(neighborId);
-      
-      const isOwnedByPlayer = playerSlots[neighborId] !== undefined;
-      const isUnclaimed = gameState.board[neighborId] === undefined;
-      
-      console.log('Neighbor:', neighborId, 'owned:', isOwnedByPlayer, 'unclaimed:', isUnclaimed);
-      
-      if (isOwnedByPlayer || isUnclaimed) {
-        validAdjacentTiles++;
-      }
-    }
-  }
-  
-  // We need at least (asset.slots - 1) valid adjacent tiles (since clicked tile counts as 1)
-  const result = validAdjacentTiles >= (asset.slots - 1);
-  console.log('Valid adjacent tiles:', validAdjacentTiles, 'needed:', asset.slots - 1, 'can place:', result);
-  
-  return result;
-}
-
-function getAssetName(type) {
-  const names = {
-    tent: 'Zelt',
-    glamping: 'Glamping',
-    caravan: 'Caravan',
-    bungalow: 'Bungalow',
-    luxurybungalow: 'Luxus-Bungalow',
-    generator: 'Generator',
-    watertank: 'Wassertank',
-    sportsfield: 'Sportplatz',
-    campfire: 'Lagerfeuer',
-    sauna: 'Sauna',
-    stage: 'Bühne'
-  };
-  return names[type] || type;
-}
+// canPlaceAsset is defined earlier at line 61
 
 function acceptNPC(npcId) {
   socket.emit('acceptNPC', { npcId });
@@ -1227,20 +1578,39 @@ function acceptNPC(npcId) {
 
 function requestGuest(type) {
   socket.emit('requestGuest', { type });
-  setTimeout(() => renderGuestPanel(), 100);
 }
 
 function runPromotion(type, cost) {
   socket.emit('runPromotion', { type, cost });
-  setTimeout(() => renderGuestPanel(), 100);
 }
 
 function upgradeAsset(tileId) {
   socket.emit('upgradeAsset', { tileId });
+  setTimeout(() => {
+    if (document.getElementById('assetDetailsModal').classList.contains('active')) {
+      const player = gameState?.players[myPlayerIndex];
+      const slot = player?.slots?.[currentAssetTileId];
+      if (slot) {
+        showAssetDetails(currentAssetTileId, slot);
+      }
+    }
+  }, 100);
 }
 
 function placeNPC(npcId, tileId) {
   socket.emit('placeNPC', { npcId, tileId });
+  setTimeout(() => {
+    if (document.getElementById('guestPanel').classList.contains('active')) {
+      renderGuestPanel();
+    }
+    if (document.getElementById('assetDetailsModal').classList.contains('active')) {
+      const player = gameState?.players[myPlayerIndex];
+      const slot = player?.slots?.[currentAssetTileId];
+      if (slot) {
+        showAssetDetails(currentAssetTileId, slot);
+      }
+    }
+  }, 100);
 }
 
 socket.on('turnSummary', (data) => {
@@ -1305,11 +1675,15 @@ function closeLeaderboard() {
 let currentAssetTileId = null;
 
 function showAssetDetails(tileId, slot) {
+  console.log('[CLIENT] showAssetDetails called');
   currentAssetTileId = tileId;
   const player = gameState.players[myPlayerIndex];
   const asset = ASSETS[slot.assetType];
   
-  const assetNames = {
+    console.log('[CLIENT] asset:', asset);
+    console.log('[CLIENT] assetNames defined');
+    
+    const assetNames = {
     tent: '⛺ Zelt',
     glamping: '🏕️ Glamping',
     caravan: '🚐 Caravan',
@@ -1324,35 +1698,32 @@ function showAssetDetails(tileId, slot) {
   };
   
   const isSleepingPlace = ['tent', 'glamping', 'caravan', 'bungalow', 'luxurybungalow'].includes(slot.assetType);
+  console.log('[CLIENT] isSleepingPlace:', isSleepingPlace);
   
-  let html = `<div style="margin-bottom:15px;"><b>${assetNames[slot.assetType] || slot.assetType}</b></div>`;
+  let html = '';
   
   // Show capacity for sleeping places
   if (isSleepingPlace) {
+    console.log('[CLIENT] Building capacity section...');
     const capacity = asset?.capacity || 0;
     const used = slot.guestCount || 0;
     html += `<div style="margin-bottom:15px;padding:10px;background:#f5f5f5;border-radius:8px;">
       Kapazität: ${used}/${capacity} Gäste
     </div>`;
   }
+  console.log('[CLIENT] Past capacity section');
   
   // Show guests currently placed here
-  if (isSleepingPlace && slot.npcs && slot.npcs.length > 0) {
-    html += '<div style="font-weight:700;margin:10px 0;">👥 Aktuelle Gäste:</div>';
-    for (const npcId of slot.npcs) {
-      const npc = player.npcs?.find(n => n.id === npcId);
-      if (npc) {
-        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:#e8f5e8;border-radius:6px;margin-bottom:5px;">
-          <span>${npc.name} (${npc.type}) - ${npc.income}€/Nacht</span>
-          <button class="btn btn-red" style="padding:4px 8px;font-size:12px;" onclick="removeNPC('${npcId}')">Entfernen</button>
-        </div>`;
-      }
-    }
-  }
+  const placedGuests = slot.npcs && slot.npcs.length > 0 
+    ? slot.npcs.map(id => player.npcs?.find(n => n.id === id)).filter(Boolean)
+    : player.npcs?.filter(n => n.placed && n.tileId === tileId) || [];
+  console.log('[CLIENT] placedGuests:', placedGuests);
   
   // Show unassigned guests that can fit here
   if (isSleepingPlace) {
+    console.log('[CLIENT] Checking compatible guests section...');
     const unassignedGuests = player.npcs?.filter(n => !n.placed) || [];
+    console.log('[CLIENT] unassignedGuests:', unassignedGuests);
     
     // Filter guests based on asset type compatibility (from GDD)
     const compatibleGuests = unassignedGuests.filter(npc => {
@@ -1405,23 +1776,30 @@ function showAssetDetails(tileId, slot) {
   html += `<button class="btn btn-red" onclick="deleteAsset('${tileId}')">🗑️ Löschen</button>`;
   
   // Upgrade button
-  if ((slot.assetType === 'tent' || slot.assetType === 'bungalow') && asset?.upgradeFrom !== undefined) {
-    const upgradeName = slot.assetType === 'tent' ? 'Glamping' : 'Luxus-Bungalow';
+  if (asset?.upgradeTo) {
+    const upgradeName = asset.upgradeTo === 'glamping' ? 'Glamping' : 'Luxus-Bungalow';
     const upgradeCost = asset.upgradePrice;
-    html += `<button class="btn btn-orange" onclick="upgradeAsset('${tileId}');closeAssetDetails();">⬆️ Upgraden (${upgradeCost}€)</button>`;
-  }
+    html += `<button class="btn btn-orange" onclick="upgradeAsset('${tileId}');window.closeAssetDetails();">⬆️ Upgraden (${upgradeCost}€)</button>`;
+  
   
   html += '</div>';
   
   document.getElementById('assetDetailsTitle').innerHTML = `📍 ${assetNames[slot.assetType] || slot.assetType}`;
   document.getElementById('assetDetailsContent').innerHTML = html;
+  console.log('[CLIENT] About to add modal active, html length:', html.length);
   document.getElementById('assetDetailsModal').classList.add('active');
+  console.log('[CLIENT] Modal active:', document.getElementById('assetDetailsModal').classList.contains('active'));
 }
 
 function closeAssetDetails() {
+  console.log('[CLIENT] closeAssetDetails called - stack trace:');
+  console.trace();
   document.getElementById('assetDetailsModal').classList.remove('active');
   currentAssetTileId = null;
 }
+
+// Also make it globally accessible
+window.testCloseAssetDetails = closeAssetDetails;
 
 function removeNPC(npcId) {
   socket.emit('removeNPC', { npcId });
@@ -1436,16 +1814,18 @@ function removeNPC(npcId) {
 
 // Asset management functions
 function startMoveAsset(tileId) {
+  console.log('[CLIENT] startMoveAsset called for tile:', tileId);
   closeAssetDetails();
+  cancelPlacement(); // Cancel any placement mode
   selectedTile = tileId;
   movingAsset = true;
   renderHexGrid();
   
-  // Show hint for moving
+  // Show hint for moving - positioned at top with padding
   const hint = document.createElement('div');
   hint.id = 'moveHint';
-  hint.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:white;padding:20px;border-radius:10px;z-index:1000;text-align:center;';
-  hint.innerHTML = '<div>🔄 Klicke auf ein leeres Feld, um das Asset zu verschieben</div><button class="btn btn-red" style="margin-top:10px;" onclick="cancelMoveAsset()">Abbrechen</button>';
+  hint.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.9);color:white;padding:15px 25px;border-radius:10px;z-index:1000;text-align:center;max-width:90%;';
+  hint.innerHTML = `<div style="margin-bottom:10px;">🔄 Klicke auf ein leeres Feld, um das Asset zu verschieben (${getOrientationName(assetOrientation)}) - R zum Drehen</div><button class="btn btn-red" onclick="cancelMoveAsset()">Abbrechen</button>`;
   document.body.appendChild(hint);
 }
 
@@ -1464,23 +1844,39 @@ function deleteAsset(tileId) {
   }
 }
 
-// Asset definitions for frontend
-const ASSETS = {
-  tent: { price: 50, slots: 1, capacity: 2, upgradeFrom: 'tent', upgradePrice: 50 },
-  glamping: { price: 100, slots: 1, capacity: 4, upgradeFrom: 'tent', upgradePrice: 50 },
-  caravan: { price: 150, slots: 2, capacity: 4 },
-  bungalow: { price: 300, slots: 3, capacity: 6, upgradeFrom: null, upgradePrice: 200 },
-  luxurybungalow: { price: 500, slots: 3, capacity: 8, upgradeFrom: 'bungalow', upgradePrice: 200 },
-  generator: { price: 200, slots: 2 },
-  watertank: { price: 150, slots: 2 },
-  sportsfield: { price: 250, slots: 3 },
-  campfire: { price: 100, slots: 1 },
-  sauna: { price: 350, slots: 2 },
-  stage: { price: 400, slots: 3 }
-};
-
 function closeTurnSummary() {
   document.getElementById('turnSummaryModal').classList.remove('active');
 }
 
 window.addEventListener('resize', initHexCanvas);
+
+// Rotate asset with R key
+window.addEventListener('keydown', (e) => {
+  if ((placementMode || movingAsset) && (heldAsset || selectedTile) && e.key.toLowerCase() === 'r') {
+    assetOrientation = (assetOrientation + 1) % 4;
+    console.log('Rotated to orientation:', assetOrientation);
+    renderHexGrid();
+    
+    // Update the hint if it exists
+    const hint = document.getElementById('placementHint') || document.getElementById('moveHint');
+    if (hint) {
+      if (placementMode && heldAsset) {
+        hint.innerHTML = `<div style="margin-bottom:10px;">🔨Asset platzieren: ${getAssetName(heldAsset.type)} (${getOrientationName(assetOrientation)}) - R zum Drehen</div><button class="btn btn-red" onclick="cancelPlacement()">Abbrechen</button>`;
+      } else if (movingAsset && selectedTile) {
+        hint.innerHTML = `<div style="margin-bottom:10px;">🔄 Asset verschieben (${getOrientationName(assetOrientation)}) - R zum Drehen</div><button class="btn btn-red" style="margin-top:10px;" onclick="cancelMoveAsset()">Abbrechen</button>`;
+      }
+    }
+  }
+})
+
+// Make functions globally accessible for HTML onclick handlers
+window.closeAssetDetails = closeAssetDetails;
+window.deleteAsset = deleteAsset;
+window.startMoveAsset = startMoveAsset;
+window.cancelMoveAsset = cancelMoveAsset;
+window.cancelPlacement = cancelPlacement;
+window.upgradeAsset = upgradeAsset;
+window.placeNPC = placeNPC;
+window.removeNPC = removeNPC;
+window.acceptNPC = acceptNPC;
+}

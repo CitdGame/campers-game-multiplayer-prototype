@@ -638,12 +638,23 @@ io.on('connection', (socket) => {
     }
     
     const currentAsset = ASSETS[slot.assetType];
-    if (!currentAsset || !currentAsset.upgradeFrom) {
+    
+    // Find the upgraded version (asset that has upgradeFrom = current asset type)
+    let upgradeTarget = null;
+    let upgradePrice = 0;
+    for (const [assetName, assetData] of Object.entries(ASSETS)) {
+      if (assetData.upgradeFrom === slot.assetType) {
+        upgradeTarget = assetName;
+        upgradePrice = assetData.upgradePrice || 0;
+        break;
+      }
+    }
+    
+    if (!upgradeTarget) {
       socket.emit('error', 'Dieses Asset kann nicht upgegradet werden');
       return;
     }
     
-    const upgradePrice = currentAsset.upgradePrice;
     if (player.money < upgradePrice) {
       socket.emit('error', 'Nicht genug Geld');
       return;
@@ -651,8 +662,8 @@ io.on('connection', (socket) => {
     
     // Upgrade
     player.money -= upgradePrice;
-    slot.assetType = currentAsset.upgradeFrom;
-    const newAsset = ASSETS[slot.assetType];
+    slot.assetType = upgradeTarget;
+    const newAsset = ASSETS[upgradeTarget];
     slot.capacity = newAsset.capacity;
     
     if (isSoloGame) {
@@ -806,6 +817,9 @@ io.on('connection', (socket) => {
         }
         
         // Place asset using AssetManager
+        // Get orientation from client or default to 0
+        const orientation = 0;
+        
         try {
           AssetManager.placeAsset(player, centerTileId, type, soloGame.gameState);
           
@@ -822,6 +836,11 @@ io.on('connection', (socket) => {
                 occupiedBy: centerTileId // Mark as occupied by main tile
               };
               soloGame.gameState.board[additionalTileId] = 0; // Player 0 owns this tile
+            }
+            
+            // Store orientation on the main tile
+            if (player.slots[centerTileId]) {
+              player.slots[centerTileId].orientation = 0;
             }
           }
         } catch (error) {
@@ -967,13 +986,16 @@ io.on('connection', (socket) => {
     players.delete(socket.id);
   });
 
-  socket.on('moveAsset', ({ fromTileId, toTileId }) => {
+  socket.on('moveAsset', ({ fromTileId, toTileId, orientation = 0 }) => {
+    console.log('[SERVER] moveAsset received:', fromTileId, '->', toTileId, 'orientation:', orientation);
     // Handle solo game
     if (soloGame) {
       const player = soloGame.gameState.players[0];
       
       const fromSlot = player.slots && player.slots[fromTileId];
       const toSlot = player.slots && player.slots[toTileId];
+      
+      console.log('[SERVER] fromSlot:', fromSlot, 'toSlot:', toSlot);
       
       if (!fromSlot || !fromSlot.assetType) {
         socket.emit('error', 'Quell-Feld hat kein Asset');
@@ -985,9 +1007,88 @@ io.on('connection', (socket) => {
         return;
       }
       
-      // Move the asset
-      player.slots[toTileId] = { ...fromSlot };
-      delete player.slots[fromTileId];
+      const asset = ASSETS[fromSlot.assetType];
+      const tilesNeeded = asset?.slots || 1;
+      
+      // Calculate new tile positions based on orientation
+      const directions = [
+        [1, 0],   // 0: right
+        [0, 1],   // 1: down
+        [-1, 0],  // 2: left
+        [0, -1]   // 3: up
+      ];
+      const dir = directions[orientation] || [1, 0];
+      
+      // For multi-slot assets, check if we have enough adjacent empty tiles
+      if (tilesNeeded > 1) {
+        const [q, r] = toTileId.split(',').map(Number);
+        
+        // Calculate tiles in the direction of orientation
+        const newTiles = [toTileId];
+        for (let i = 1; i < tilesNeeded; i++) {
+          const nq = q + (dir[0] * i);
+          const nr = r + (dir[1] * i);
+          newTiles.push(`${nq},${nr}`);
+        }
+        
+        console.log('[SERVER] New tiles based on orientation:', newTiles);
+        
+        // Get all tiles that will be cleared from old position
+        // fromSlot.tiles already contains all tiles (main + occupied)
+        const oldTiles = fromSlot.tiles ? [...fromSlot.tiles] : [fromTileId];
+        
+        console.log('[SERVER] oldTiles:', oldTiles);
+        console.log('[SERVER] newTiles:', newTiles);
+        console.log('[SERVER] player.slots keys:', Object.keys(player.slots));
+        
+        // Check if all new tiles are valid (empty or from old position)
+        let allValid = true;
+        for (const tileId of newTiles) {
+          const slot = player.slots[tileId];
+          const isOldTile = oldTiles.includes(tileId);
+          console.log('[SERVER] Checking tile:', tileId, 'slot:', slot, 'isOldTile:', isOldTile);
+          if (slot && !isOldTile && (slot.assetType || slot.occupiedBy)) {
+            console.log('[SERVER] Tile is occupied:', tileId);
+            allValid = false;
+            break;
+          }
+        }
+        
+        if (!allValid) {
+          socket.emit('error', `Nicht genug freie Felder für dieses Asset (brauche ${tilesNeeded} Felder)`);
+          return;
+        }
+        
+        // Clear all old tiles - mark as empty instead of deleting
+        for (const oldTileId of oldTiles) {
+          player.slots[oldTileId] = { assetType: null, guestCount: 0, capacity: 0 };
+        }
+        
+        // Place on new tiles
+        for (const tId of newTiles) {
+          if (tId === toTileId) {
+            player.slots[tId] = {
+              ...fromSlot,
+              tiles: newTiles,
+              builtAt: Date.now()
+            };
+          } else {
+            player.slots[tId] = {
+              assetType: null,
+              guestCount: 0,
+              capacity: 0,
+              occupiedBy: toTileId
+            };
+          }
+          soloGame.gameState.board[tId] = 0; // Player 0 owns
+        }
+        
+        console.log('[SERVER] Moved asset from tiles:', oldTiles, 'to tiles:', newTiles);
+      } else {
+        // Single tile asset - simple move
+        player.slots[toTileId] = { ...fromSlot };
+        player.slots[fromTileId] = { assetType: null, guestCount: 0 };
+      }
       
       socket.emit('gameState', soloGame.gameState);
       return;
@@ -1018,9 +1119,71 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Move the asset
-    player.slots[toTileId] = { ...fromSlot };
-    delete player.slots[fromTileId];
+    const asset = ASSETS[fromSlot.assetType];
+    const tilesNeeded = asset?.slots || 1;
+    
+    // For multi-slot assets, check if we have enough adjacent empty tiles
+    if (tilesNeeded > 1) {
+      const [q, r] = toTileId.split(',').map(Number);
+      const neighbors = [
+        `${q+1},${r}`, `${q-1},${r}`, `${q},${r+1}`, `${q},${r-1}`, `${q+1},${r-1}`, `${q-1},${r+1}`
+      ];
+      
+      // Get old tiles that will be cleared (can be reused)
+      const oldTiles = fromSlot.tiles ? [...fromSlot.tiles] : [fromTileId];
+      // Also include any tiles that were occupied by the old main tile
+      for (const [tid, s] of Object.entries(player.slots)) {
+        if (s.occupiedBy === fromTileId) {
+          oldTiles.push(tid);
+        }
+      }
+      
+      // Find available adjacent tiles - can be empty OR old tiles we're clearing
+      const availableNeighbors = neighbors.filter(nid => {
+        const slot = player.slots[nid];
+        // Can use if: empty, or is one of our old tiles we're clearing
+        if (!slot) return true; // Undefined = unowned
+        if (!slot.assetType && !slot.occupiedBy) return true; // Empty owned tile
+        if (oldTiles.includes(nid)) return true; // Old tile we're clearing
+        return false;
+      });
+      
+      if (availableNeighbors.length < tilesNeeded - 1) {
+        socket.emit('error', `Nicht genug freie Felder für dieses Asset (brauche ${tilesNeeded} Felder)`);
+        return;
+      }
+      
+      // Move the multi-slot asset
+      const newTiles = [toTileId, ...availableNeighbors.slice(0, tilesNeeded - 1)];
+      
+      // Clear all old tiles - mark as empty instead of deleting
+      for (const oldTileId of oldTiles) {
+        player.slots[oldTileId] = { assetType: null, guestCount: 0, capacity: 0 };
+      }
+      
+      // Place on new tiles
+      for (const tId of newTiles) {
+        if (tId === toTileId) {
+          player.slots[tId] = {
+            ...fromSlot,
+            tiles: newTiles,
+            builtAt: Date.now()
+          };
+        } else {
+          player.slots[tId] = {
+            assetType: null,
+            guestCount: 0,
+            capacity: 0,
+            occupiedBy: toTileId
+          };
+        }
+        lobby.gameState.board[tId] = playerIndex;
+      }
+    } else {
+      // Single tile asset - simple move
+      player.slots[toTileId] = { ...fromSlot };
+      player.slots[fromTileId] = { assetType: null, guestCount: 0 };
+    }
     
     io.to(p.lobby).emit('gameState', lobby.gameState);
   });
@@ -1048,8 +1211,14 @@ io.on('connection', (socket) => {
         }
       }
       
-      // Delete the asset
-      delete player.slots[tileId];
+      // Delete the asset and mark all its tiles as empty
+      if (slot.tiles) {
+        for (const tId of slot.tiles) {
+          player.slots[tId] = { assetType: null, guestCount: 0, capacity: 0 };
+        }
+      } else {
+        player.slots[tileId] = { assetType: null, guestCount: 0, capacity: 0 };
+      }
       
       socket.emit('gameState', soloGame.gameState);
       return;
@@ -1085,8 +1254,14 @@ io.on('connection', (socket) => {
       }
     }
     
-    // Delete the asset
-    delete player.slots[tileId];
+    // Delete the asset and mark all its tiles as empty
+    if (slot.tiles) {
+      for (const tId of slot.tiles) {
+        player.slots[tId] = { assetType: null, guestCount: 0, capacity: 0 };
+      }
+    } else {
+      player.slots[tileId] = { assetType: null, guestCount: 0, capacity: 0 };
+    }
     
     io.to(p.lobby).emit('gameState', lobby.gameState);
   });

@@ -33,7 +33,7 @@
       </div>
       <div class="topbar-right">
         <button class="icon-btn" onclick="openBuildPanel()" title="Bauen & Kaufen">🏗️</button>
-        <button class="icon-btn" onclick="openGuestPanel()" title="Gäste">👥</button>
+        <button class="icon-btn" onclick="openGuestPanel()" title="Gäste" style="position:relative;">👥<span id="guestBtnBadge" style="position:absolute;top:-5px;right:-5px;background:var(--red);color:white;font-size:10px;padding:2px 5px;border-radius:8px;display:none;">0</span></button>
         <button class="icon-btn" onclick="showLeaderboard()" title="Spieler">🏆</button>
       </div>
     </div>
@@ -51,7 +51,8 @@
     
     <!-- Build Panel Modal -->
     <div class="modal-overlay" id="buildPanel">
-      <div class="modal" style="max-width:500px;max-height:80vh;overflow-y:auto;">
+      <div class="modal" style="max-width:500px;max-height:80vh;overflow-y:auto;position:relative;">
+        <button class="close-btn" onclick="closeBuildPanel()">✕</button>
         <h2>🏗️ Bauen & Kaufen</h2>
         <p style="font-size:13px;color:#666;margin-bottom:15px;">💡 Klicke auf ein Asset, um es zu kaufen und zu platzieren</p>
         
@@ -77,15 +78,14 @@
           <button class="asset-btn" onclick="buyAsset('sauna')"><span class="icon">🧖</span><span class="name">Sauna</span><span class="price">350€</span><span class="space">2 Slots</span></button>
           <button class="asset-btn" onclick="buyAsset('stage')"><span class="icon">🎭</span><span class="name">Bühne</span><span class="price">400€</span><span class="space">3 Slots</span></button>
         </div>
-        
-        <button class="btn btn-red" style="width:100%;margin-top:15px;" onclick="closeBuildPanel()">Schließen</button>
       </div>
     </div>
     
     <!-- Guest Panel Modal -->
     <div class="modal-overlay" id="guestPanel">
-      <div class="modal" style="max-width:500px;max-height:80vh;overflow-y:auto;">
-        <h2>👥 Gäste-Anfragen</h2>
+      <div class="modal" style="max-width:500px;max-height:80vh;overflow-y:auto;position:relative;">
+        <button class="close-btn" onclick="closeGuestPanel()">✕</button>
+        <h2>👥 Gäste-Anfragen <span id="requestCountBadge" style="display:inline-block;background:var(--red);color:white;font-size:12px;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-left:8px;">0</span></h2>
         
         <div style="font-weight:700;font-size:13px;color:var(--green-dark);">🪙 Münzen</div>
         <div class="assets-grid" style="margin-top:8px;">
@@ -104,23 +104,22 @@
         
         <div style="margin-top:15px;font-weight:700;font-size:13px;color:var(--green-dark);">📋 Anfragen</div>
         <div id="npcList" style="margin-top:8px;"></div>
-        
-        <button class="btn btn-red" style="width:100%;margin-top:15px;" onclick="closeGuestPanel()">Schließen</button>
       </div>
     </div>
     
     <!-- Player List Modal -->
     <div class="modal-overlay" id="playerPanel">
-      <div class="modal">
+      <div class="modal" style="position:relative;">
+        <button class="close-btn" onclick="closePlayerList()">✕</button>
         <h2>🏆 Spielstand</h2>
         <div id="playerList"></div>
-        <button class="btn btn-red" style="width:100%;margin-top:15px;" onclick="closePlayerList()">Schließen</button>
       </div>
     </div>
     
     <!-- Error Modal -->
     <div class="modal-overlay" id="errorModal">
-      <div class="modal">
+      <div class="modal" style="position:relative;">
+        <button class="close-btn" onclick="closeError()">✕</button>
         <h2>❌ Fehler</h2>
         <p id="errorMsg"></p>
         <button class="btn btn-green" style="width:100%;margin-top:15px;" onclick="closeError()">OK</button>
@@ -129,7 +128,8 @@
     
     <!-- Turn Summary Modal -->
     <div class="modal-overlay" id="turnSummaryModal">
-      <div class="modal">
+      <div class="modal" style="position:relative;">
+        <button class="close-btn" onclick="closeTurnSummary()">✕</button>
         <h2>📊 Zug-Zusammenfassung</h2>
         <div id="turnSummary"></div>
         <button class="btn btn-green" style="width:100%;margin-top:15px;" onclick="closeTurnSummary()">Weiter</button>
@@ -138,19 +138,19 @@
     
     <!-- Leaderboard Modal -->
     <div class="modal-overlay" id="leaderboardModal">
-      <div class="modal">
+      <div class="modal" style="position:relative;">
+        <button class="close-btn" onclick="closeLeaderboard()">✕</button>
         <h2>🏆 Rangliste</h2>
         <div id="leaderboardContent"></div>
-        <button class="btn btn-red" style="width:100%;margin-top:15px;" onclick="closeLeaderboard()">Schließen</button>
       </div>
     </div>
     
     <!-- Asset Details Modal -->
     <div class="modal-overlay" id="assetDetailsModal">
-      <div class="modal" style="max-width:450px;">
-        <h2 id="assetDetailsTitle">📍 Asset Details</h2>
+      <div class="modal" style="max-width:450px;position:relative;">
+        <button class="close-btn" onclick="closeAssetDetails()">✕</button>
+        <h2 id="assetDetailsTitle">Asset Details</h2>
         <div id="assetDetailsContent"></div>
-        <button class="btn btn-red" style="width:100%;margin-top:15px;" onclick="closeAssetDetails()">Schließen</button>
       </div>
     </div>
   </div>

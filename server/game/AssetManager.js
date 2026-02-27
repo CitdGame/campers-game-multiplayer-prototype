@@ -109,16 +109,20 @@ export class AssetManager {
       builtAt: Date.now()
     };
     
-    // Handle multi-tile assets
+    // Handle multi-tile assets - store all tiles as part of the asset
     if (asset.slots > 1) {
+      let tiles = [tileId];
       let marked = 1;
       for (const [tid, slot] of Object.entries(player.slots)) {
         if (tid !== tileId && !slot.assetType && !slot.occupiedBy) {
           player.slots[tid] = { ...player.slots[tid], occupiedBy: tileId };
+          tiles.push(tid);
           marked++;
           if (marked >= asset.slots) break;
         }
       }
+      // Store all tiles as part of this asset
+      player.slots[tileId].tiles = tiles;
     }
     
     return { success: true, cost: asset.price };

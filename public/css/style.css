@@ -391,11 +391,12 @@ body {
 .modal {
   background: white;
   border-radius: 20px;
-  padding: 25px;
+  padding: 30px 25px 25px;
   max-width: 90%;
   max-height: 80vh;
   overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  position: relative;
 }
 
 .modal h2 {
@@ -403,6 +404,33 @@ body {
   font-size: 24px;
   color: var(--green-dark);
   margin-bottom: 15px;
+}
+
+.close-btn {
+  position: sticky;
+  top: 0;
+  float: right;
+  margin: -10px -10px 10px 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: var(--red);
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, background 0.2s;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.close-btn:hover {
+  transform: scale(1.1);
+  background: #C62828;
 }
 
 .assets-grid {
