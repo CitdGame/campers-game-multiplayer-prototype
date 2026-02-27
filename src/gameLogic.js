@@ -132,7 +132,7 @@ function generateNPC(quarter, isHighSeason, eventEffects = null, forcedType = nu
     specialNeeds,
     tierRequirement,
     quarter,
-    accepted: false
+    turnsUntilExpiry: GAME_CONFIG.npcRequestTurnLimit
   };
 }
 

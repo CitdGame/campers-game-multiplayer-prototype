@@ -170,6 +170,24 @@ socket.on('quarterChanged', (data) => {
   }
 });
 
+socket.on('turnSummary', (summary) => {
+  const { playerName, income, maintenanceCosts, resourceGained, resourceUsed, netResources, npcsStaying, expiredRequests } = summary;
+  
+  let msg = `📊 Zug-Zusammenfassung für ${playerName}:\n\n`;
+  msg += `💰 Einnahmen: +${income}€\n`;
+  msg += `🔧 Unterhaltskosten: -${maintenanceCosts}€\n`;
+  msg += `⚡ Strom: ${resourceGained.electricity}⚡ → ${resourceUsed.electricity}⚡ (${netResources.electricity >= 0 ? '+' : ''}${netResources.electricity})\n`;
+  msg += `💧 Wasser: ${resourceGained.water}💧 → ${resourceUsed.water}💧 (${netResources.water >= 0 ? '+' : ''}${netResources.water})\n`;
+  msg += `🏠 Gäste übernachten: ${npcsStaying}`;
+  
+  if (expiredRequests > 0) {
+    msg += `\n⏰ Abgelaufene Anfragen: ${expiredRequests}`;
+  }
+  
+  // Show as alert for now
+  setTimeout(() => alert(msg), 500);
+});
+
 function updateGameUI() {
   document.getElementById('yearVal').textContent = gameState.year;
   document.getElementById('quarterVal').textContent = gameState.quarter;
@@ -309,41 +327,62 @@ function renderSlots() {
   const SLEEPING_TYPES = ['tent', 'glamping', 'caravan', 'bungalow', 'luxurybungalow'];
   const UPGRADES = { tent: { to: 'glamping', cost: 150 }, bungalow: { to: 'luxurybungalow', cost: 300 } };
   
-  // Group consecutive slots by asset
+  // Group by unique asset (not by slot count)
   const groups = [];
-  let currentGroup = null;
+  const processedSlots = new Set();
   
   for (let i = 0; i < slotArray.length; i++) {
+    if (processedSlots.has(i)) continue;
+    
     const slot = slotArray[i];
     if (slot === null) {
-      if (currentGroup) {
-        groups.push(currentGroup);
-        currentGroup = null;
-      }
-      groups.push({ type: 'empty', indices: [i] });
+      groups.push({ type: 'empty', indices: [i], assets: [] });
+      processedSlots.add(i);
     } else {
-      if (currentGroup && currentGroup.assetId === slot.id) {
-        currentGroup.indices.push(i);
-      } else {
-        if (currentGroup) {
-          groups.push(currentGroup);
+      const slotsNeeded = slot.slotsNeeded || 1;
+      const indices = [];
+      for (let j = 0; j < slotsNeeded && i + j < slotArray.length; j++) {
+        if (slotArray[i + j] && slotArray[i + j].id === slot.id) {
+          indices.push(i + j);
+          processedSlots.add(i + j);
         }
-        currentGroup = { type: 'asset', asset: slot, indices: [i], assetId: slot.id };
+      }
+      groups.push({ type: 'asset', asset: slot, indices, assets: [slot] });
+    }
+  }
+  
+  // Now group consecutive same-type assets together
+  const finalGroups = [];
+  let prevGroup = null;
+  
+  for (const group of groups) {
+    if (group.type === 'empty') {
+      if (prevGroup && prevGroup.type === 'empty') {
+        prevGroup.indices.push(...group.indices);
+      } else {
+        finalGroups.push(group);
+        prevGroup = group;
+      }
+    } else {
+      if (prevGroup && prevGroup.type === 'asset' && prevGroup.asset.assetType === group.asset.assetType && !prevGroup.isMultiSlot) {
+        prevGroup.assets.push(group.asset);
+        prevGroup.indices.push(...group.indices);
+      } else {
+        group.isMultiSlot = (group.indices.length > 1);
+        finalGroups.push(group);
+        prevGroup = group;
       }
     }
   }
-  if (currentGroup) {
-    groups.push(currentGroup);
-  }
   
-  container.innerHTML = groups.map(group => {
+  container.innerHTML = finalGroups.map(group => {
     if (group.type === 'empty') {
       return `<div class="slot empty" data-index="${group.indices[0]}" style="width:50px;height:50px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;background:#f9f9f9;border-radius:8px;">⬜</div>`;
     }
     const slot = group.asset;
     const icon = ASSET_ICONS[slot.assetType] || '📦';
     const size = group.indices.length;
-    const width = 50 + (size - 1) * 54;
+    const assetCount = group.assets ? group.assets.length : 1;
     const isSleeping = SLEEPING_TYPES.includes(slot.assetType);
     const isOccupied = slot.guestCount > 0;
     const upgrade = UPGRADES[slot.assetType];
@@ -367,6 +406,22 @@ function renderSlots() {
       slotHeight = 65;
     }
     
+    if (assetCount > 1) {
+      const groupDetails = group.assets.map((a, idx) => {
+        const occ = a.guestCount > 0;
+        return `<div style="padding:4px;font-size:11px;display:flex;justify-content:space-between;align-items:center;${occ ? 'background:#ffeaa7;' : ''}border-bottom:1px solid #eee;cursor:pointer;" onclick="event.stopPropagation();showAssetDetails('${a.id}')">
+          <span>${icon} ${slot.assetType.charAt(0).toUpperCase() + slot.assetType.slice(1)} ${idx + 1}</span>
+          <span>${occ ? '👥' + a.guestCount + '/' + a.capacity + ' (' + a.remainingNights + 'N)' : ' Frei'}</span>
+        </div>`;
+      }).join('');
+      
+      return `<div class="slot-group" style="position:relative;display:inline-block;">
+        <div class="slot occupied" data-index="${group.indices[0]}" style="width:50px;height:${slotHeight}px;border:2px solid var(--green-mid);display:flex;flex-direction:column;align-items:center;justify-content:center;background:${isOccupied ? '#ffeaa7' : '#e8f5e9'};border-radius:8px;font-size:24px;cursor:pointer;" onclick="this.nextElementSibling.classList.toggle('hidden')" title="${slot.name} (${size} Slots)">${icon}<span style="font-size:12px;">x${assetCount}</span>${extraInfo}${upgradeBtn}</div>
+        <div class="hidden" style="position:absolute;top:${slotHeight + 4}px;left:0;background:#fff;border:2px solid var(--green-mid);border-radius:8px;min-width:150px;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:100;max-height:200px;overflow-y:auto;">${groupDetails}</div>
+      </div>`;
+    }
+    
+    const width = 50 + (size - 1) * 54;
     return `<div class="slot occupied" data-index="${group.indices[0]}" style="width:${width}px;height:${slotHeight}px;border:2px solid var(--green-mid);display:flex;flex-direction:column;align-items:center;justify-content:center;background:${isOccupied ? '#ffeaa7' : '#e8f5e9'};border-radius:8px;font-size:24px;position:relative;cursor:pointer;" onclick="showAssetDetails('${slot.id}')" title="${slot.name} (${size} Slots)">${icon}${extraInfo}${upgradeBtn}</div>`;
   }).join('');
 }
@@ -403,9 +458,11 @@ function renderNPCList() {
     const incomePerNight = Math.floor(npc.income / npc.nights);
     const nightLabel = npc.nights === 1 ? 'Nacht' : 'Nächte';
     const specialNeedsText = npc.specialNeeds.length > 0 ? ` | ✨ ${npc.specialNeeds.map(n => NEED_NAMES[n] || n).join(', ')}` : '';
+    const turnsLeft = npc.turnsUntilExpiry || 0;
+    const expiresSoon = turnsLeft <= 1;
     return `
-    <div class="npc-card" style="padding:10px;margin-bottom:8px;">
-      <div class="npc-header" style="margin-bottom:6px;">
+    <div class="npc-card" style="padding:10px;margin-bottom:8px;border-left:4px solid ${expiresSoon ? '#e74c3c' : '#27ae60'};">
+      <div class="npc-header" style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
         <span class="npc-name" style="font-weight:700;">${npc.name}</span>
         <span class="npc-type ${npc.type.toLowerCase()}" style="font-size:12px;">${npc.type === 'Hippies' ? '🌿' : npc.type === 'Families' ? '👨‍👩‍👧' : '💎'} ${npc.type}</span>
       </div>
@@ -419,6 +476,9 @@ function renderNPCList() {
       </div>
       <div style="font-size:12px;margin-bottom:6px;">
         🏠 ${TIER_NAMES[npc.tierRequirement] || npc.tierRequirement || 'Zelt'}${specialNeedsText}
+      </div>
+      <div style="font-size:11px;margin-bottom:6px;color:${expiresSoon ? '#e74c3c' : '#888'};">
+        ⏰ Läuft ab in ${turnsLeft} ${turnsLeft === 1 ? 'Runde' : 'Runden'}
       </div>
       <button class="btn btn-green" style="width:100%;font-size:14px;padding:8px;" onclick="acceptNPC('${npc.id}')">✓ Annehmen</button>
     </div>
@@ -434,7 +494,7 @@ function buyAsset(type) {
 }
 
 function showUpgradeTip() {
-  alert('💡 Upgrade-Möglichkeiten:\n\n⛺ Zelt → 🏕️ Glamping: 150€\n   (2 Pers → 4 Pers)\n\n🏠 Bungalow → 🏰 Luxus-Bungalow: 300€\n   (6 Pers → 8 Pers)\n\nKlicke auf ein leeres Zelt oder Bungalow auf deinem Platz, um es zu upgraden!');
+  alert('💡 Upgrade-Möglichkeiten:\n\n⛺ Zelt → 🏕️ Glamping: 100€\n   (2 Pers → 4 Pers)\n\n🏠 Bungalow → 🏰 Luxus-Bungalow: 300€\n   (6 Pers → 8 Pers)\n\nKlicke auf ein leeres Zelt oder Bungalow auf deinem Platz, um es zu upgraden!');
 }
 
 function showAssetDetails(assetId) {

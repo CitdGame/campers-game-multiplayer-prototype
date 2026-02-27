@@ -31,17 +31,17 @@ const EVENT_EFFECTS = {
 };
 
 const ASSETS = {
-  tent: { name: 'Zelt', price: 50, space: 1, type: 'sleeping', capacity: 2, tiers: ['tent', 'glamping'] },
-  glamping: { name: 'Glamping-Zelt', price: 200, space: 2, type: 'sleeping', capacity: 4, tiers: ['glamping'] },
-  caravan: { name: 'Caravan', price: 150, space: 2, type: 'sleeping', capacity: 4, tiers: ['tent', 'glamping', 'caravan'] },
-  bungalow: { name: 'Bungalow', price: 300, space: 3, type: 'sleeping', capacity: 6, tiers: ['glamping', 'bungalow'] },
-  luxurybungalow: { name: 'Luxus-Bungalow', price: 600, space: 4, type: 'sleeping', capacity: 8, tiers: ['luxury'] },
-  generator: { name: 'Stromgenerator', price: 200, space: 2, type: 'resource', produces: { electricity: 5 } },
-  watertank: { name: 'Wassertank', price: 150, space: 2, type: 'resource', produces: { water: 5 } },
-  sportsfield: { name: 'Sportplatz', price: 250, space: 3, type: 'special', satisfies: ['Sports'] },
-  campfire: { name: 'Lagerfeuerstelle', price: 100, space: 1, type: 'special', satisfies: ['Campfire'] },
-  sauna: { name: 'Sauna', price: 350, space: 2, type: 'special', satisfies: ['Sauna'] },
-  stage: { name: 'Open-Air Bühne', price: 400, space: 3, type: 'special', satisfies: ['Stage'] }
+  tent: { name: 'Zelt', price: 50, space: 1, type: 'sleeping', capacity: 2, tiers: ['tent', 'glamping'], maintenanceCost: 5 },
+  glamping: { name: 'Glamping-Zelt', price: 200, space: 2, type: 'sleeping', capacity: 4, tiers: ['glamping'], maintenanceCost: 10 },
+  caravan: { name: 'Caravan', price: 150, space: 2, type: 'sleeping', capacity: 4, tiers: ['tent', 'glamping', 'caravan'], maintenanceCost: 15 },
+  bungalow: { name: 'Bungalow', price: 300, space: 3, type: 'sleeping', capacity: 6, tiers: ['glamping', 'bungalow'], maintenanceCost: 25 },
+  luxurybungalow: { name: 'Luxus-Bungalow', price: 600, space: 4, type: 'sleeping', capacity: 8, tiers: ['luxury'], maintenanceCost: 40 },
+  generator: { name: 'Stromgenerator', price: 200, space: 2, type: 'resource', produces: { electricity: 5 }, maintenanceCost: 20 },
+  watertank: { name: 'Wassertank', price: 150, space: 2, type: 'resource', produces: { water: 5 }, maintenanceCost: 15 },
+  sportsfield: { name: 'Sportplatz', price: 250, space: 3, type: 'special', satisfies: ['Sports'], maintenanceCost: 30 },
+  campfire: { name: 'Lagerfeuerstelle', price: 100, space: 1, type: 'special', satisfies: ['Campfire'], maintenanceCost: 10 },
+  sauna: { name: 'Sauna', price: 350, space: 2, type: 'special', satisfies: ['Sauna'], maintenanceCost: 35 },
+  stage: { name: 'Open-Air Bühne', price: 400, space: 3, type: 'special', satisfies: ['Stage'], maintenanceCost: 45 }
 };
 
 const SPECIAL_NEEDS = ['Sports', 'Campfire', 'Sauna', 'Stage'];
@@ -71,7 +71,8 @@ const GAME_CONFIG = {
   slotExpansionAmount: 5,
   baseIncomePerNight: 2,
   roundsPerQuarter: 3,
-  quartersPerYear: 4
+  quartersPerYear: 4,
+  npcRequestTurnLimit: 3 // NPC requests expire after 3 turns
 };
 
 module.exports = {

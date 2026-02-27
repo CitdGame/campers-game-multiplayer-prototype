@@ -227,7 +227,7 @@ function setupSocketHandlers(io) {
         return;
       }
       
-      const UPGRADES = { tent: { to: 'glamping', cost: 150 }, bungalow: { to: 'luxurybungalow', cost: 300 } };
+      const UPGRADES = { tent: { to: 'glamping', cost: 100 }, bungalow: { to: 'luxurybungalow', cost: 300 } };
       const upgrade = UPGRADES[asset.assetType];
       if (!upgrade) {
         socket.emit('error', 'Dieses Asset kann nicht upgegraded werden');
@@ -408,8 +408,47 @@ function setupSocketHandlers(io) {
       }
       
       const acceptedNPCs = gameState.npcs.filter(n => n.assignedTo === player.id);
-      const roundIncome = acceptedNPCs.reduce((sum, n) => sum + Math.floor(n.income / n.nights), 0);
+      const roundIncome = acceptedNPCs.reduce((sum, npc) => {
+        // Calculate per-night income
+        const perNight = Math.floor(npc.income / npc.nights);
+        return sum + perNight;
+      }, 0);
       player.money += roundIncome;
+      
+      // Calculate and deduct maintenance costs for all owned assets
+      let totalMaintenanceCost = 0;
+      for (const asset of player.assets) {
+        const assetData = getAssetByType(asset.assetType);
+        if (assetData && assetData.maintenanceCost) {
+          totalMaintenanceCost += assetData.maintenanceCost;
+        }
+      }
+      player.money -= totalMaintenanceCost;
+      
+      // Decrement NPC request timers and remove expired requests
+      for (const npc of gameState.npcs) {
+        if (!npc.accepted && npc.turnsUntilExpiry > 0) {
+          npc.turnsUntilExpiry--;
+        }
+      }
+      // Remove NPCs that have expired (not accepted and timer reached 0)
+      const expiredNPCs = gameState.npcs.filter(n => !n.accepted && n.turnsUntilExpiry <= 0);
+      if (expiredNPCs.length > 0) {
+        console.log(`Removed ${expiredNPCs.length} expired NPC requests`);
+      }
+      gameState.npcs = gameState.npcs.filter(n => n.accepted || n.turnsUntilExpiry > 0);
+      
+      // Guests consume resources
+      let electricityUsed = 0;
+      let waterUsed = 0;
+      for (const npc of acceptedNPCs) {
+        if (npc.needs) {
+          electricityUsed += npc.needs.electricity || 0;
+          waterUsed += npc.needs.water || 0;
+        }
+      }
+      player.electricity -= electricityUsed;
+      player.water -= waterUsed;
       
       for (const asset of player.assets) {
         if (asset.assetType && ['tent', 'glamping', 'caravan', 'bungalow', 'luxurybungalow'].includes(asset.assetType)) {
@@ -469,6 +508,21 @@ function setupSocketHandlers(io) {
       
       gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
       
+      // Create turn summary
+      const turnSummary = {
+        playerName: player.name,
+        income: roundIncome,
+        maintenanceCosts: totalMaintenanceCost,
+        resourceGained: { electricity: electricityGain, water: waterGain },
+        resourceUsed: { electricity: electricityUsed, water: waterUsed },
+        netResources: { 
+          electricity: electricityGain - electricityUsed, 
+          water: waterGain - waterUsed 
+        },
+        npcsStaying: stillStaying.length,
+        expiredRequests: expiredNPCs.length
+      };
+      
       if (gameState.currentPlayerIndex === 0) {
         gameState.round++;
         
@@ -490,6 +544,9 @@ function setupSocketHandlers(io) {
           });
         }
       }
+      
+      // Emit turn summary to the player who just finished their turn
+      socket.emit('turnSummary', turnSummary);
       
       io.to(data.code).emit('gameStateUpdated', gameState);
     });
