@@ -1,0 +1,620 @@
+/* === RETRO PIXEL TOP HUD === */
+    .top-hud {
+      position: absolute;
+      top: calc(8px + var(--safe-top));
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .hud-left, .hud-right {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      pointer-events: auto;
+    }
+
+    .hud-pill {
+      background: #fffbe6;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: var(--pixel-border);
+      box-shadow: 0 4px 0 #142819;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #1a252f;
+      letter-spacing: 0.5px;
+    }
+
+    .hud-pill.cash {
+      background: #e8f8f5;
+      color: #27ae60;
+      font-size: 16px;
+    }
+
+    .hud-pill.cash.strike {
+      background: #fadbd8 !important;
+      border-color: #e74c3c !important;
+      color: #c0392b !important;
+      animation: pixel-pulse 0.8s infinite alternate;
+    }
+
+    .hud-pill.cash span {
+      font-size: 17px;
+    }
+
+    .hud-pill.vault {
+      background: #fef9e7;
+      border-color: #b7950b;
+      color: #7d6608;
+      font-size: 15px;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: transform 0.05s;
+    }
+    .hud-pill.vault:active {
+      transform: translateY(2px);
+    }
+    .hud-pill.vault span:first-child {
+      font-size: 16px;
+    }
+
+    .hud-pill.gems {
+      background: #ebf5fb;
+      border-color: #2980b9;
+      color: #1f618d;
+      font-size: 15px;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: transform 0.05s;
+    }
+    .hud-pill.gems:active {
+      transform: translateY(2px);
+    }
+    .hud-pill.gems span:first-child {
+      font-size: 16px;
+    }
+
+    .hud-pill.overload {
+      background: #fadbd8;
+      border-color: #922b21;
+      color: #c0392b;
+      animation: pixel-pulse 0.8s infinite alternate;
+    }
+
+    @keyframes pixel-pulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.06); }
+    }
+
+    .btn-icon {
+      height: 38px;
+      padding: 0 10px;
+      border-radius: 6px;
+      background: #fff;
+      border: var(--pixel-border);
+      box-shadow: 0 4px 0 #142819;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-family: 'Pixelify Sans', sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: transform 0.05s;
+    }
+    .btn-icon:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #142819;
+    }
+
+    /* === RETRO ALERT BANNERS CONTAINER === */
+    .banners-container {
+      position: absolute;
+      top: calc(56px + var(--safe-top));
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      z-index: 15;
+      pointer-events: none;
+    }
+
+    .frenzy-banner {
+      order: 1;
+      display: none;
+      background: #e67e22;
+      color: white;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: 3px solid #f1c40f;
+      box-shadow: 0 4px 0 #935116;
+      pointer-events: none;
+      animation: pixel-pulse 1s infinite alternate;
+      white-space: nowrap;
+    }
+
+    /* === INTERACTIVE GOAL TOASTS CONTAINER (Stacked vertically, placed below joy frenzy) === */
+    .goal-toasts-container {
+      order: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      pointer-events: none;
+    }
+
+    .boost-banner {
+      order: 3;
+      display: none;
+      background: linear-gradient(135deg, #8e44ad, #2980b9);
+      color: #f1c40f;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: 3px solid #f39c12;
+      box-shadow: 0 4px 0 #142819;
+      pointer-events: none;
+      animation: pixel-pulse 1.2s infinite alternate;
+      white-space: nowrap;
+    }
+
+    .goal-toast {
+      display: flex;
+      background: linear-gradient(135deg, #27ae60, #1e8449);
+      color: #ffffff;
+      border: 3px solid #f1c40f;
+      border-radius: 8px;
+      box-shadow: 0 4px 0 #142819, 0 8px 16px rgba(0, 0, 0, 0.35);
+      padding: 6px 12px;
+      cursor: pointer;
+      pointer-events: auto;
+      align-items: center;
+      gap: 10px;
+      max-width: 92vw;
+      width: max-content;
+      user-select: none;
+      animation: goalToastPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), goalToastGlow 1.5s infinite alternate ease-in-out;
+      transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease, box-shadow 0.08s;
+    }
+
+    .goal-toast:hover {
+      transform: translateY(-2px) scale(1.02);
+    }
+
+    .goal-toast:active {
+      transform: translateY(2px) scale(0.98);
+      box-shadow: 0 2px 0 #142819;
+    }
+
+    .goal-toast.toast-leave {
+      transform: translateY(-16px) scale(0.88);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .goal-toast-icon {
+      font-size: 22px;
+      line-height: 1;
+      animation: goalBounceMini 1.2s infinite;
+    }
+
+    .goal-toast-body {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .goal-toast-badge {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #f1c40f;
+      text-transform: uppercase;
+    }
+
+    .goal-toast-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 210px;
+    }
+
+    .goal-toast-reward {
+      font-size: 10px;
+      color: #d5f5e3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 230px;
+    }
+
+    .goal-toast-claim-tag {
+      background: #f1c40f;
+      color: #142819;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 5px 9px;
+      border-radius: 5px;
+      border: 2px solid #142819;
+      box-shadow: 0 2px 0 #142819;
+      white-space: nowrap;
+      letter-spacing: 0.5px;
+      animation: pulseBtn 1s infinite;
+    }
+
+    @keyframes goalToastPop {
+      0% { transform: translateY(-20px) scale(0.85); opacity: 0; }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    @keyframes goalToastGlow {
+      0% { border-color: #f1c40f; box-shadow: 0 4px 0 #142819, 0 0 6px rgba(241, 196, 15, 0.4); }
+      100% { border-color: #ffffff; box-shadow: 0 4px 0 #142819, 0 0 16px rgba(241, 196, 15, 0.85); }
+    }
+
+    @keyframes goalBounceMini {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    /* === PIXEL VIRTUAL JOYSTICK === */
+    #joystick-zone {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    #joystick-base {
+      display: none;
+      position: absolute;
+      width: 96px;
+      height: 96px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.45);
+      border: 4px solid #142819;
+      box-shadow: 0 4px 0 #142819;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    #joystick-knob {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 44px;
+      height: 44px;
+      border-radius: 4px;
+      background: #f1c40f;
+      border: 3px solid #142819;
+      box-shadow: inset 2px 2px 0 #fef9e7, inset -2px -2px 0 #d4ac0d;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    /* === BOTTOM ACTIONS & STACK BADGE === */
+    .bottom-bar {
+      position: absolute;
+      bottom: calc(14px + var(--safe-bottom));
+      left: 12px;
+      right: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .stack-badge {
+      background: #1b4329;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 700;
+      border: var(--pixel-border);
+      box-shadow: 0 4px 0 #0d1e13;
+      pointer-events: auto;
+    }
+
+    /* Bottom bar navigation group */
+    .bottom-nav-group {
+      display: flex;
+      gap: 6px;
+      pointer-events: auto;
+    }
+
+    .bottom-btn {
+      position: relative;
+      background: #27ae60;
+      color: white;
+      border: var(--pixel-border);
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-family: 'Pixelify Sans', sans-serif;
+      font-weight: 700;
+      box-shadow: 0 4px 0 #142819;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: transform 0.05s;
+      white-space: nowrap;
+    }
+    .bottom-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #142819;
+    }
+    .bottom-btn.crates {
+      background: #e67e22;
+    }
+    .bottom-btn.shop {
+      background: #2980b9;
+    }
+    .bottom-btn.goals {
+      background: #8e44ad;
+    }
+
+    .notif-badge {
+      position: absolute;
+      top: -8px;
+      right: -6px;
+      background: #e74c3c;
+      color: white;
+      font-size: 10px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 10px;
+      border: 2px solid #142819;
+      box-shadow: 0 2px 0 #142819;
+      animation: bounceBadge 1.2s infinite ease-in-out;
+    }
+    .notif-badge.free {
+      background: #f1c40f;
+      color: #142819;
+      font-size: 9px;
+    }
+    @keyframes bounceBadge {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+
+    /* Desktop Hint Banner */
+    .desktop-hint {
+      position: absolute;
+      bottom: calc(65px + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      background: #142819;
+      color: #f1c40f;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 14px;
+      border-radius: 4px;
+      border: 2px solid #3a7522;
+      pointer-events: none;
+      z-index: 10;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-icon.btn-hub-menu {
+      background: #f1c40f;
+      color: #142819;
+      font-size: 11px;
+      font-weight: 700;
+      width: auto;
+      padding: 0 8px;
+      box-shadow: 0 3px 0 #142819;
+    }
+
+    /* === MOBILE RESPONSIVE OPTIMIZATIONS (<= 600px) === */
+    @media (max-width: 600px) {
+      .desktop-hint {
+        display: none !important;
+      }
+
+      .top-hud {
+        top: calc(4px + var(--safe-top));
+        left: 6px;
+        right: 6px;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .hud-left {
+        flex: 1 1 100%;
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 4px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2px;
+      }
+      .hud-left::-webkit-scrollbar {
+        display: none;
+      }
+
+      .hud-right {
+        flex: 1 1 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .hud-pill {
+        padding: 4px 6px;
+        font-size: 11px;
+        gap: 3px;
+        border-width: 2px;
+        box-shadow: 0 2px 0 #142819;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .hud-pill.cash {
+        font-size: 12px;
+        padding: 4px 8px;
+      }
+      .hud-pill.cash span {
+        font-size: 13px;
+      }
+
+      .hud-pill.vault, .hud-pill.gems {
+        font-size: 11px;
+      }
+
+      .btn-icon {
+        height: 32px;
+        min-width: 32px;
+        padding: 0 6px;
+        font-size: 12px;
+        border-width: 2px;
+        box-shadow: 0 2px 0 #142819;
+      }
+
+      .btn-icon.btn-hub-menu {
+        padding: 0 8px;
+        font-size: 11px;
+      }
+
+      #btn-reset {
+        display: none; /* Hide reset from top hud on mobile to avoid accidental taps; accessible in Menu */
+      }
+
+      /* Alert banners and toasts placed nicely below 2-tier HUD */
+      .banners-container {
+        top: calc(72px + var(--safe-top));
+        width: calc(100% - 16px);
+      }
+
+      .frenzy-banner {
+        font-size: 9px;
+        padding: 5px 10px;
+        border-width: 2px;
+      }
+
+      .boost-banner {
+        font-size: 8px;
+        padding: 5px 10px;
+        border-width: 2px;
+      }
+
+      .goal-toast {
+        max-width: 100%;
+        padding: 6px 10px;
+        gap: 8px;
+      }
+
+      .goal-toast-icon {
+        font-size: 18px;
+      }
+
+      .goal-toast-title {
+        font-size: 11px;
+        max-width: 140px;
+      }
+
+      .goal-toast-reward {
+        font-size: 9px;
+        max-width: 140px;
+      }
+
+      .goal-toast-claim-tag {
+        font-size: 10px;
+        padding: 4px 6px;
+      }
+
+      /* Mobile Ergonomic Bottom Bar & Nav Buttons */
+      .bottom-bar {
+        left: 8px;
+        right: 8px;
+        bottom: calc(8px + var(--safe-bottom));
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+      }
+
+      .stack-badge {
+        align-self: flex-start;
+        padding: 5px 10px;
+        font-size: 12px;
+        border-width: 2px;
+        box-shadow: 0 3px 0 #0d1e13;
+      }
+
+      .bottom-nav-group {
+        width: 100%;
+        display: flex;
+        gap: 5px;
+      }
+
+      .bottom-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        justify-content: center;
+        padding: 10px 2px;
+        font-size: 11px;
+        border-width: 2px;
+        box-shadow: 0 3px 0 #142819;
+        min-height: 44px; /* Accessible 44px touch target */
+        letter-spacing: -0.3px;
+        gap: 3px;
+      }
+
+      .bottom-btn:active {
+        transform: translateY(2px);
+        box-shadow: 0 1px 0 #142819;
+      }
+
+      .notif-badge {
+        top: -6px;
+        right: -4px;
+        padding: 1px 4px;
+        font-size: 9px;
+      }
+
+      #joystick-base {
+        width: 84px;
+        height: 84px;
+      }
+
+      #joystick-knob {
+        width: 38px;
+        height: 38px;
+      }
+    }
+
+    /* Smallest Mobile Viewports (<= 360px) */
+    @media (max-width: 360px) {
+      .bottom-btn {
+        font-size: 10px;
+        padding: 9px 1px;
+      }
+      .hud-pill {
+        font-size: 10px;
+        padding: 3px 5px;
+      }
+    }

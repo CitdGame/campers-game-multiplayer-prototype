@@ -1225,6 +1225,133 @@ export class PixelRenderer {
 
   // Draw Biome-specific trees (Pine, Palm, Alpine Fir, Cactus, Crystal/Spooky)
   static drawBiomeTree(ctx, x, y, frame = 0, treeType = 'pine', palette = null) {
+    if (treeType === 'cherry_blossom') {
+      ctx.save();
+      ctx.translate(Math.floor(x), Math.floor(y));
+      // Shadow
+      ctx.fillStyle = 'rgba(20, 40, 20, 0.25)';
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 15, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Trunk
+      ctx.fillStyle = '#4a2311';
+      ctx.fillRect(-3, -12, 6, 14);
+      ctx.fillRect(-1, -16, 4, 5);
+      // Sakura Blossom Canopy (Soft pink clouds)
+      ctx.fillStyle = '#f48fb1';
+      ctx.beginPath();
+      ctx.arc(-8, -24, 12, 0, Math.PI * 2);
+      ctx.arc(8, -24, 12, 0, Math.PI * 2);
+      ctx.arc(0, -32, 13, 0, Math.PI * 2);
+      ctx.fill();
+      // Light blossom highlights
+      ctx.fillStyle = '#fce4ec';
+      ctx.beginPath();
+      ctx.arc(-5, -28, 8, 0, Math.PI * 2);
+      ctx.arc(5, -28, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    if (treeType === 'acacia') {
+      ctx.save();
+      ctx.translate(Math.floor(x), Math.floor(y));
+      // Shadow
+      ctx.fillStyle = 'rgba(30, 40, 10, 0.25)';
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 18, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Slanted acacia trunk
+      ctx.fillStyle = '#6e4726';
+      ctx.fillRect(-2, -14, 5, 16);
+      ctx.fillRect(-6, -22, 5, 9);
+      ctx.fillRect(3, -22, 4, 9);
+      // Flat umbrella canopy
+      ctx.fillStyle = palette?.treeLeaf || '#4d7c0f';
+      ctx.fillRect(-20, -27, 40, 5);
+      ctx.fillRect(-24, -25, 48, 4);
+      ctx.fillStyle = palette?.treeShadow || '#365314';
+      ctx.fillRect(-16, -23, 32, 2);
+      ctx.restore();
+      return;
+    }
+    if (treeType === 'birch') {
+      ctx.save();
+      ctx.translate(Math.floor(x), Math.floor(y));
+      // Shadow
+      ctx.fillStyle = 'rgba(20, 40, 20, 0.25)';
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 12, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Pale white birch trunk with black notches
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(-2, -18, 4, 20);
+      ctx.fillStyle = '#1c2833';
+      ctx.fillRect(-2, -12, 2, 2);
+      ctx.fillRect(0, -6, 2, 2);
+      // Birch foliage
+      ctx.fillStyle = palette?.treeLeaf || '#84cc16';
+      ctx.beginPath();
+      ctx.arc(0, -26, 12, 0, Math.PI * 2);
+      ctx.arc(0, -36, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    if (treeType === 'bamboo') {
+      ctx.save();
+      ctx.translate(Math.floor(x), Math.floor(y));
+      // Shadow
+      ctx.fillStyle = 'rgba(20, 50, 20, 0.25)';
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 10, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Stalks
+      ctx.fillStyle = '#65a30d';
+      ctx.fillRect(-6, -34, 3, 36);
+      ctx.fillRect(0, -38, 3, 40);
+      ctx.fillRect(6, -30, 3, 32);
+      // Joints
+      ctx.fillStyle = '#365314';
+      ctx.fillRect(-7, -24, 5, 1);
+      ctx.fillRect(-7, -14, 5, 1);
+      ctx.fillRect(-1, -26, 5, 1);
+      ctx.fillRect(-1, -16, 5, 1);
+      ctx.fillRect(5, -20, 5, 1);
+      // Leaves
+      ctx.fillStyle = '#84cc16';
+      ctx.fillRect(-12, -30, 7, 3);
+      ctx.fillRect(2, -36, 8, 3);
+      ctx.fillRect(8, -26, 7, 3);
+      ctx.restore();
+      return;
+    }
+    if (treeType === 'cypress') {
+      ctx.save();
+      ctx.translate(Math.floor(x), Math.floor(y));
+      // Shadow
+      ctx.fillStyle = 'rgba(10, 30, 10, 0.25)';
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 8, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Slender dark green column spire
+      ctx.fillStyle = palette?.treeShadow || '#14532d';
+      ctx.beginPath();
+      ctx.moveTo(0, -42);
+      ctx.lineTo(-6, -4);
+      ctx.lineTo(6, -4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = palette?.treeLeaf || '#166534';
+      ctx.beginPath();
+      ctx.moveTo(0, -40);
+      ctx.lineTo(0, -4);
+      ctx.lineTo(5, -4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
     if (treeType === 'palm') {
       ctx.save();
       ctx.translate(Math.floor(x), Math.floor(y));
@@ -1300,6 +1427,524 @@ export class PixelRenderer {
     });
     ctx.restore();
   }
+
+  // --- REGIONAL SIGNATURE CAMPING ASSETS (WORLD 1: PLANET EARTH) ---
+
+  // 1. Central Asian Yurt (Kyrgyzstan, Mongolia, Kazakhstan)
+  static drawYurt(ctx, x, y, palette = null) {
+    ctx.save();
+    ctx.translate(Math.floor(x), Math.floor(y));
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 26, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wooden ring base
+    ctx.fillStyle = PIXEL_COLORS.woodDark;
+    ctx.fillRect(-22, 6, 44, 4);
+
+    // Cylindrical felt wall (White/Cream felt with red geometric nomad pattern)
+    ctx.fillStyle = '#f5f5dc'; // Beige felt
+    ctx.fillRect(-20, -4, 40, 10);
+    // Red nomad felt band
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(-20, -1, 40, 3);
+    ctx.fillStyle = '#f1c40f';
+    ctx.fillRect(-16, 0, 3, 2);
+    ctx.fillRect(-8, 0, 3, 2);
+    ctx.fillRect(0, 0, 3, 2);
+    ctx.fillRect(8, 0, 3, 2);
+    ctx.fillRect(16, 0, 3, 2);
+
+    // Conical Felt Dome Roof
+    ctx.fillStyle = '#eaecee';
+    ctx.beginPath();
+    ctx.moveTo(0, -22);
+    ctx.lineTo(-21, -4);
+    ctx.lineTo(21, -4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Shadowed left side
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+    ctx.beginPath();
+    ctx.moveTo(0, -22);
+    ctx.lineTo(-21, -4);
+    ctx.lineTo(0, -4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Tunduk (Sacred Wooden Crown Ring on top)
+    ctx.fillStyle = '#d35400';
+    ctx.beginPath();
+    ctx.ellipse(0, -22, 6, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f1c40f';
+    ctx.fillRect(-3, -23, 6, 1);
+    ctx.fillRect(-1, -24, 2, 3);
+
+    // Wooden carved entrance door
+    ctx.fillStyle = '#784212';
+    ctx.fillRect(-5, 0, 10, 6);
+    ctx.fillStyle = '#d35400';
+    ctx.fillRect(-4, 1, 8, 4);
+    ctx.fillStyle = '#f1c40f';
+    ctx.fillRect(2, 3, 1, 1); // Brass handle
+
+    // Felt tie ropes
+    ctx.fillStyle = '#922b21';
+    ctx.fillRect(-14, -13, 28, 1);
+
+    ctx.restore();
+  }
+
+  // 2. North American Tipi (Great Plains, Rocky Mountains, Yellowstone)
+  static drawTipi(ctx, x, y, palette = null) {
+    ctx.save();
+    ctx.translate(Math.floor(x), Math.floor(y));
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 24, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Crossing wooden poles extending at top
+    ctx.fillStyle = '#784212';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-10, -32); ctx.lineTo(10, -18);
+    ctx.moveTo(10, -32); ctx.lineTo(-10, -18);
+    ctx.moveTo(0, -34); ctx.lineTo(0, -18);
+    ctx.stroke();
+
+    // Conical hide / canvas body
+    ctx.fillStyle = '#d7ba89'; // Buckskin / raw canvas tone
+    ctx.beginPath();
+    ctx.moveTo(0, -22);
+    ctx.lineTo(-19, 8);
+    ctx.lineTo(19, 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Shading on left
+    ctx.fillStyle = 'rgba(80, 50, 20, 0.18)';
+    ctx.beginPath();
+    ctx.moveTo(0, -22);
+    ctx.lineTo(-19, 8);
+    ctx.lineTo(0, 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Buffalo & Sun motifs (Red & Turquoise painted bands)
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(-12, -4, 24, 2);
+    ctx.fillStyle = '#16a085';
+    ctx.fillRect(-16, 2, 32, 2);
+
+    // Flap opening
+    ctx.fillStyle = '#1f1610';
+    ctx.beginPath();
+    ctx.moveTo(0, -5);
+    ctx.lineTo(-5, 8);
+    ctx.lineTo(5, 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Wooden pin pegs closing the seam
+    ctx.fillStyle = '#784212';
+    ctx.fillRect(-1, -18, 2, 1);
+    ctx.fillRect(-1, -14, 2, 1);
+    ctx.fillRect(-1, -10, 2, 1);
+
+    ctx.restore();
+  }
+
+  // 3. African Safari Glamping Tent (Serengeti, Okavango, Kruger)
+  static drawSafariTent(ctx, x, y, palette = null) {
+    ctx.save();
+    ctx.translate(Math.floor(x), Math.floor(y));
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 28, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Raised Teak Wood Stilt Platform
+    ctx.fillStyle = '#563517';
+    ctx.fillRect(-24, 5, 48, 5);
+    ctx.fillStyle = '#935116';
+    ctx.fillRect(-23, 4, 46, 3);
+    // Platform stilts
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(-22, 9, 3, 5);
+    ctx.fillRect(19, 9, 3, 5);
+    ctx.fillRect(-2, 9, 3, 5);
+
+    // Safari Khaki Outer Flysheet (Double-roof design against tropical sun)
+    ctx.fillStyle = '#a0855b';
+    ctx.beginPath();
+    ctx.moveTo(0, -24);
+    ctx.lineTo(-22, -6);
+    ctx.lineTo(22, -6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner Canvas Tent
+    ctx.fillStyle = '#c8b18a';
+    ctx.beginPath();
+    ctx.moveTo(0, -19);
+    ctx.lineTo(-18, 4);
+    ctx.lineTo(18, 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Front Veranda Opening with roll-up netting
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(-8, -6, 16, 10);
+    // Rolled up canvas flap
+    ctx.fillStyle = '#7d6608';
+    ctx.fillRect(-9, -9, 18, 3);
+
+    // Safari camp chairs on deck
+    ctx.fillStyle = '#d35400';
+    ctx.fillRect(-18, 1, 5, 4);
+    ctx.fillRect(13, 1, 5, 4);
+
+    ctx.restore();
+  }
+
+  // 4. Bedouin Desert Tent (Sahara, Wadi Rum, Arabian Oasis)
+  static drawBedouinTent(ctx, x, y, palette = null) {
+    ctx.save();
+    ctx.translate(Math.floor(x), Math.floor(y));
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 30, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Low wide goat-hair woven tent (Black & Crimson stripes)
+    ctx.fillStyle = '#1c1c1c';
+    ctx.beginPath();
+    ctx.moveTo(-24, 4);
+    ctx.lineTo(-12, -14);
+    ctx.lineTo(12, -14);
+    ctx.lineTo(24, 4);
+    ctx.lineTo(24, 8);
+    ctx.lineTo(-24, 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Crimson and cream woven desert stripe
+    ctx.fillStyle = '#922b21';
+    ctx.fillRect(-18, -4, 36, 3);
+    ctx.fillStyle = '#f5b041';
+    ctx.fillRect(-16, -3, 32, 1);
+
+    // Front opening showing patterned kilim rug inside
+    ctx.fillStyle = '#b03a2e';
+    ctx.fillRect(-10, 0, 20, 8);
+    ctx.fillStyle = '#f4d03f';
+    ctx.fillRect(-8, 3, 16, 2);
+
+    // Wooden support poles
+    ctx.fillStyle = '#784212';
+    ctx.fillRect(-12, -16, 2, 24);
+    ctx.fillRect(10, -16, 2, 24);
+
+    ctx.restore();
+  }
+
+  // 5. Alpine Chalet / Berg-Biwak (Alps, Schwarzwald, Dolomites, Patagonia)
+  static drawAlpineHut(ctx, x, y, palette = null) {
+    ctx.save();
+    ctx.translate(Math.floor(x), Math.floor(y));
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 28, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Natural stone foundation
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fillRect(-20, 4, 40, 5);
+    ctx.fillStyle = '#95a5a6';
+    ctx.fillRect(-18, 5, 12, 3);
+
+    // Dark Larch log walls
+    ctx.fillStyle = '#543217';
+    ctx.fillRect(-18, -10, 36, 14);
+    ctx.fillStyle = '#784212';
+    ctx.fillRect(-17, -8, 34, 3);
+    ctx.fillRect(-17, -3, 34, 3);
+
+    // Steep wooden shingle roof with stone weights
+    ctx.fillStyle = '#3e2723';
+    ctx.beginPath();
+    ctx.moveTo(0, -26);
+    ctx.lineTo(-24, -8);
+    ctx.lineTo(24, -8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Shingle highlights
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(-18, -14, 36, 2);
+    ctx.fillRect(-12, -20, 24, 2);
+
+    // Wooden door & Red Geranium window box
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(-5, -4, 10, 8);
+    ctx.fillStyle = '#e74c3c'; // Geraniums
+    ctx.fillRect(9, -7, 6, 2);
+    ctx.fillStyle = '#27ae60';
+    ctx.fillRect(9, -5, 6, 1);
+
+    ctx.restore();
+  }
+
+  // 6. Japanese Zen Ryokan Pod (Kyoto, Mount Fuji, East Asia)
+  static drawRyokanPod(ctx, x, y, palette = null) {
+    ctx.save();
+    ctx.translate(Math.floor(x), Math.floor(y));
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 28, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tatami porch platform
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(-22, 4, 44, 5);
+    ctx.fillStyle = '#d4ac0d'; // Bamboo / tatami edge
+    ctx.fillRect(-20, 3, 40, 3);
+
+    // Natural Cedar walls with Shoji paper panels
+    ctx.fillStyle = '#784212';
+    ctx.fillRect(-18, -12, 36, 15);
+    ctx.fillStyle = '#fdfefe'; // White paper screen
+    ctx.fillRect(-14, -8, 12, 10);
+    ctx.fillRect(2, -8, 12, 10);
+
+    // Shoji lattice grid
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(-8, -8, 1, 10);
+    ctx.fillRect(-14, -3, 12, 1);
+    ctx.fillRect(8, -8, 1, 10);
+    ctx.fillRect(2, -3, 12, 1);
+
+    // Traditional curved Pagoda eaves roof
+    ctx.fillStyle = '#1c2833';
+    ctx.beginPath();
+    ctx.moveTo(0, -25);
+    ctx.lineTo(-26, -10);
+    ctx.lineTo(26, -10);
+    ctx.closePath();
+    ctx.fill();
+
+    // Curved roof wing tips
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(-26, -12, 3, 3);
+    ctx.fillRect(23, -12, 3, 3);
+
+    // Paper lantern hanging on side
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillRect(19, -5, 4, 6);
+    ctx.fillStyle = '#f1c40f';
+    ctx.fillRect(20, -3, 2, 2);
+
+    ctx.restore();
+  }
+
+  // 7. Tropical Palapa & Bamboo Hut (Bali, Philippines, Caribbean, Hawaii)
+  static drawPalapaHut(ctx, x, y, palette = null) {
+    ctx.save();
+    ctx.translate(Math.floor(x), Math.floor(y));
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 28, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bamboo Stilts
+    ctx.fillStyle = '#7d6608';
+    ctx.fillRect(-18, 2, 4, 7);
+    ctx.fillRect(14, 2, 4, 7);
+    ctx.fillRect(-2, 2, 4, 7);
+
+    // Open Bamboo deck
+    ctx.fillStyle = '#d4ac0d';
+    ctx.fillRect(-20, 0, 40, 4);
+
+    // Thick Thatched Palm Frond Roof (layered golden thatch)
+    ctx.fillStyle = '#9a7d0a';
+    ctx.beginPath();
+    ctx.moveTo(0, -26);
+    ctx.lineTo(-24, -4);
+    ctx.lineTo(24, -4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Thatch fringes
+    ctx.fillStyle = '#f1c40f';
+    ctx.beginPath();
+    ctx.moveTo(0, -24);
+    ctx.lineTo(-22, -6);
+    ctx.lineTo(22, -6);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#b7950b';
+    ctx.fillRect(-22, -4, 44, 2);
+
+    // Tropical Hammock / colorful curtain
+    ctx.fillStyle = '#e67e22';
+    ctx.fillRect(-10, -2, 8, 4);
+    ctx.fillStyle = '#3498db';
+    ctx.fillRect(2, -2, 8, 4);
+
+    ctx.restore();
+  }
+
+  // 8. Nordic Falu A-Frame (Norway, Lofoten, Lapland, Iceland)
+  static drawNordicAFrame(ctx, x, y, palette = null) {
+    ctx.save();
+    ctx.translate(Math.floor(x), Math.floor(y));
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 26, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Granite foundation
+    ctx.fillStyle = '#566573';
+    ctx.fillRect(-20, 5, 40, 5);
+
+    // Steep A-frame roof rafters
+    ctx.fillStyle = '#212f3d';
+    ctx.beginPath();
+    ctx.moveTo(0, -27);
+    ctx.lineTo(-21, 6);
+    ctx.lineTo(21, 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Falu-red wooden gable facade
+    ctx.fillStyle = '#922b21'; // Traditional Falu Red
+    ctx.beginPath();
+    ctx.moveTo(0, -23);
+    ctx.lineTo(-16, 5);
+    ctx.lineTo(16, 5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Large warm glowing window
+    ctx.fillStyle = '#f9e79f';
+    ctx.beginPath();
+    ctx.moveTo(0, -18);
+    ctx.lineTo(-8, -2);
+    ctx.lineTo(8, -2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Dark window framing
+    ctx.fillStyle = '#1c2833';
+    ctx.fillRect(-1, -18, 2, 16);
+    ctx.fillRect(-6, -8, 12, 1);
+
+    // White corner trims (classic Nordic style)
+    ctx.fillStyle = '#fdfefe';
+    ctx.fillRect(-16, 3, 3, 2);
+    ctx.fillRect(13, 3, 3, 2);
+
+    ctx.restore();
+  }
+
+  // --- UNIVERSAL REGIONAL PITCH DISPATCHER ---
+  static drawPitch(ctx, x, y, tier = 'tent', style = 'classic', frame = 0, palette = null) {
+    if (tier === 'tent') {
+      switch (style) {
+        case 'yurt':
+          PixelRenderer.drawYurt(ctx, x, y, palette);
+          return;
+        case 'tipi':
+          PixelRenderer.drawTipi(ctx, x, y, palette);
+          return;
+        case 'safari':
+          PixelRenderer.drawSafariTent(ctx, x, y, palette);
+          return;
+        case 'bedouin':
+          PixelRenderer.drawBedouinTent(ctx, x, y, palette);
+          return;
+        case 'alpine':
+          PixelRenderer.drawAlpineHut(ctx, x, y, palette);
+          return;
+        case 'ryokan':
+          PixelRenderer.drawRyokanPod(ctx, x, y, palette);
+          return;
+        case 'palapa':
+          PixelRenderer.drawPalapaHut(ctx, x, y, palette);
+          return;
+        case 'nordic':
+          PixelRenderer.drawNordicAFrame(ctx, x, y, palette);
+          return;
+        default:
+          PixelRenderer.drawPupTent(ctx, x, y);
+          return;
+      }
+    }
+
+    if (tier === 'caravan') {
+      PixelRenderer.drawCaravan(ctx, x, y);
+      return;
+    }
+
+    if (tier === 'glamping') {
+      if (style === 'yurt') {
+        PixelRenderer.drawYurt(ctx, x, y, palette);
+      } else if (style === 'safari') {
+        PixelRenderer.drawSafariTent(ctx, x, y, palette);
+      } else if (style === 'ryokan') {
+        PixelRenderer.drawRyokanPod(ctx, x, y, palette);
+      } else {
+        PixelRenderer.drawGlampingDome(ctx, x, y);
+      }
+      return;
+    }
+
+    if (tier === 'cabin') {
+      PixelRenderer.drawLogCabin(ctx, x, y);
+      return;
+    }
+
+    if (tier === 'chalet') {
+      PixelRenderer.drawChalet(ctx, x, y);
+      return;
+    }
+
+    if (tier === 'lodge') {
+      PixelRenderer.drawLodge(ctx, x, y);
+      return;
+    }
+
+    if (tier === 'villa') {
+      PixelRenderer.drawVilla(ctx, x, y);
+      return;
+    }
+
+    // Default fallback
+    PixelRenderer.drawPupTent(ctx, x, y);
+  }
+
 }
 
 

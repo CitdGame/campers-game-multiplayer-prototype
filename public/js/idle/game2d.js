@@ -4,620 +4,45 @@ import { PixelRenderer, PIXEL_COLORS } from './pixelSprites.js';
 export const SAVE_KEY = 'campers_pixel_save_v2';
 export const SAVE_VERSION = 2;
 
-export const CURRENT_EVENT_DEF = {
-  id: 'forest_festival_2026',
-  name: '🔥 Großes Waldfestival',
-  subtitle: 'Lagerfeuer-Nacht & Festtags-Jubel',
-  desc: 'Verdiene Event-Punkte durch Check-Ins, Müllsammeln & Lagerfeuer, um epische Franchise-Belohnungen einzulösen!',
-  durationHours: 64,
-  milestones: [
-    { id: 'm1', points: 15, title: 'Edelstein-Paket', rewardText: '💎 35 Gems', type: 'gems', amount: 35 },
-    { id: 'm2', points: 40, title: 'Goldene Vorratskiste', rewardText: '📦 Goldene Kiste', type: 'crate', crateId: 'golden' },
-    { id: 'm3', points: 80, title: 'Empire Tresor-Prämie', rewardText: '🏛️ $450 Gold + ⚡ 1h Boost', type: 'vault_boost', gold: 450, boostSeconds: 3600 },
-    { id: 'm4', points: 150, title: 'Kaiserlicher Hauptpreis', rewardText: '👑 Kaiser-Kiste + 💎 100 Gems', type: 'emperor_pack', crateId: 'emperor', gems: 100 }
-  ]
+// Game Configuration Modules
+import { CURRENT_EVENT_DEF } from './config/events.js';
+import { MANAGER_DEFS, WORKER_DEFS, MANAGER_PREREQS, getManagerWage, getTotalStaffWage } from './config/managers.js';
+import { CRATE_DEFS } from './config/crates.js';
+import { WORLD_BIOMES, CAMP_MAP_CONFIGS, getCampKey, getCampSizeInfo, getEarthRegionDef, EARTH_REGIONS_100 } from './config/worlds.js';
+import { getCampAchievementDefs } from './config/achievements.js';
+import { calculateCampActiveRate, calculateCampIdleRate } from './config/rates.js';
+import { FRANCHISE_UPGRADE_DEFS } from './config/franchise.js';
+import {
+  getMaxBuildingLevel,
+  getBuildingUpgradeCost,
+  getBuildingIncomeMultiplier,
+  getBuildingBonusCapacity,
+  getTotalBuildingLevels,
+  getHighestBuildingLevel
+} from './config/buildings.js';
+import { GameState } from './state/GameState.js';
+import { EconomySystem } from './systems/EconomySystem.js';
+import { DrawerUI } from './ui/DrawerUI.js';
+import { MainMenuUI } from './ui/MainMenuUI.js';
+import { HUDController } from './ui/HUDController.js';
+import { ModalsUI } from './ui/ModalsUI.js';
+
+// Re-export constants for full backwards/debug compatibility
+export {
+  CURRENT_EVENT_DEF,
+  MANAGER_DEFS,
+  WORKER_DEFS,
+  MANAGER_PREREQS,
+  CRATE_DEFS,
+  WORLD_BIOMES,
+  CAMP_MAP_CONFIGS,
+  getCampKey,
+  getCampSizeInfo,
+  getCampAchievementDefs,
+  calculateCampActiveRate,
+  calculateCampIdleRate,
+  FRANCHISE_UPGRADE_DEFS
 };
-
-export const MANAGER_DEFS = {
-  alex: {
-    id: 'alex',
-    name: 'Clerk Alex',
-    role: 'receptionist',
-    roleName: 'Front Desk Clerk #1',
-    category: 'frontdesk',
-    rarity: 'common',
-    icon: '🧑‍💼',
-    desc: 'Auto-checks in arriving campers at the front desk',
-    unlockCards: 1,
-    maxLevel: 4,
-    x: 192,
-    y: 522,
-    levels: [
-      { level: 1, cardsReq: 1, cost: 25, speed: 2.0, tip: 0, desc: 'Auto check-in every 2.0s' },
-      { level: 2, cardsReq: 2, cost: 60, speed: 1.3, tip: 5, desc: 'Check-in every 1.3s +$5 tip' },
-      { level: 3, cardsReq: 4, cost: 120, speed: 0.8, tip: 12, desc: 'Check-in every 0.8s +$12 tip' },
-      { level: 4, cardsReq: 8, cost: 240, speed: 0.4, tip: 22, desc: 'Master Concierge: 0.4s +$22 tip' }
-    ]
-  },
-  sam: {
-    id: 'sam',
-    name: 'Clerk Sam',
-    role: 'receptionist_2',
-    roleName: 'Front Desk Clerk #2',
-    category: 'frontdesk',
-    rarity: 'rare',
-    icon: '🧑‍💻',
-    desc: 'Adds 2nd check-in counter lane to clear waves 2x faster',
-    unlockCards: 2,
-    maxLevel: 3,
-    x: 208,
-    y: 522,
-    levels: [
-      { level: 1, cardsReq: 2, cost: 50, speed: 1.8, tip: 5, desc: 'Dual lane auto-checkin (1.8s +$5 tip)' },
-      { level: 2, cardsReq: 4, cost: 110, speed: 1.0, tip: 12, desc: 'Fast track lane (1.0s +$12 tip)' },
-      { level: 3, cardsReq: 8, cost: 220, speed: 0.5, tip: 25, desc: 'VIP Express (0.5s +$25 tip)' }
-    ]
-  },
-  oliver: {
-    id: 'oliver',
-    name: 'Oliver',
-    role: 'cleaner_tent',
-    roleName: 'Tent Meadow Cleaner',
-    category: 'cleaner',
-    rarity: 'common',
-    icon: '🧹',
-    desc: 'Patrols West Meadow, sweeps tent trash & collects cash drops',
-    zone: 'tent',
-    unlockCards: 1,
-    maxLevel: 3,
-    x: 100,
-    y: 300,
-    levels: [
-      { level: 1, cardsReq: 1, cost: 20, speed: 52, bonus: 0, desc: 'Sweeps West Tents at 52 px/s' },
-      { level: 2, cardsReq: 2, cost: 45, speed: 78, bonus: 5, desc: 'Roller Skates (78 px/s +$5 trash bonus)' },
-      { level: 3, cardsReq: 4, cost: 90, speed: 105, bonus: 15, desc: 'Turbo Sweeper (105 px/s +$15 trash bonus)' }
-    ]
-  },
-  chloe: {
-    id: 'chloe',
-    name: 'Chloe',
-    role: 'cleaner_caravan',
-    roleName: 'Caravan Lane Cleaner',
-    category: 'cleaner',
-    rarity: 'rare',
-    icon: '🧽',
-    desc: 'Patrols East Lane, sweeps caravan trash & collects cash drops',
-    zone: 'caravan',
-    unlockCards: 2,
-    maxLevel: 3,
-    x: 300,
-    y: 260,
-    levels: [
-      { level: 1, cardsReq: 2, cost: 40, speed: 56, bonus: 5, desc: 'Sweeps East Caravans at 56 px/s +$5' },
-      { level: 2, cardsReq: 4, cost: 95, speed: 82, bonus: 12, desc: 'Speed boost (82 px/s +$12 trash bonus)' },
-      { level: 3, cardsReq: 8, cost: 180, speed: 112, bonus: 22, desc: 'Eco-Mop Pro (112 px/s +$22 trash bonus)' }
-    ]
-  },
-  felix: {
-    id: 'felix',
-    name: 'Felix',
-    role: 'cleaner_cabin',
-    roleName: 'Forest Lodge Cleaner',
-    category: 'cleaner',
-    rarity: 'epic',
-    icon: '✨',
-    desc: 'Patrols North Forest, sweeps luxury trash & VIP cash piles',
-    zone: 'cabin',
-    unlockCards: 3,
-    maxLevel: 3,
-    x: 200,
-    y: 120,
-    levels: [
-      { level: 1, cardsReq: 3, cost: 70, speed: 60, bonus: 10, desc: 'Sweeps Forest Lodges at 60 px/s +$10' },
-      { level: 2, cardsReq: 5, cost: 150, speed: 88, bonus: 20, desc: 'Polished Butler (88 px/s +$20 trash bonus)' },
-      { level: 3, cardsReq: 10, cost: 260, speed: 120, bonus: 35, desc: 'White Glove Service (120 px/s +$35 trash bonus)' }
-    ]
-  },
-  finn: {
-    id: 'finn',
-    name: 'Finn',
-    role: 'fisher',
-    roleName: 'Master Fisherman',
-    category: 'specialist',
-    rarity: 'rare',
-    icon: '🎣',
-    desc: 'Auto-fishes on the tranquil pond pier and sells prized catches',
-    unlockCards: 2,
-    maxLevel: 4,
-    x: 370,
-    y: 136,
-    levels: [
-      { level: 1, cardsReq: 2, cost: 45, interval: 3.6, income: 30, desc: 'Catches fish every 3.6s ($30/catch)' },
-      { level: 2, cardsReq: 4, cost: 95, interval: 2.5, income: 50, desc: 'Carbon Rod: Fish every 2.5s ($50/catch)' },
-      { level: 3, cardsReq: 8, cost: 180, interval: 1.6, income: 80, desc: 'Golden Lures: Fish every 1.6s ($80/catch)' },
-      { level: 4, cardsReq: 15, cost: 320, interval: 1.0, income: 130, desc: 'Trophy Angler: Fish every 1.0s ($130/catch)' }
-    ]
-  },
-  bella: {
-    id: 'bella',
-    name: 'Bella',
-    role: 'barista',
-    roleName: 'Kiosk Barista',
-    category: 'specialist',
-    rarity: 'common',
-    icon: '☕',
-    desc: 'Staffs the Snack Kiosk, serving campers coffee, snacks & ice cream',
-    unlockCards: 1,
-    maxLevel: 4,
-    x: 320,
-    y: 456,
-    levels: [
-      { level: 1, cardsReq: 1, cost: 30, interval: 4.0, income: 25, desc: 'Serves snacks every 4.0s ($25/sale)' },
-      { level: 2, cardsReq: 3, cost: 70, interval: 2.8, income: 45, desc: 'Espresso Bar: Serves every 2.8s ($45/sale)' },
-      { level: 3, cardsReq: 6, cost: 140, interval: 1.8, income: 75, desc: 'Gourmet Treats: Serves every 1.8s ($75/sale)' },
-      { level: 4, cardsReq: 12, cost: 260, interval: 1.1, income: 120, desc: 'Cafe Delite: Serves every 1.1s ($120/sale)' }
-    ]
-  },
-  robin: {
-    id: 'robin',
-    name: 'Robin',
-    role: 'lumberjack',
-    roleName: 'Fire Tender & Woodcutter',
-    category: 'specialist',
-    rarity: 'epic',
-    icon: '🪵',
-    desc: 'Hauls firewood to campfire for nonstop Joy Frenzy (1.5x Multiplier)',
-    unlockCards: 3,
-    maxLevel: 3,
-    x: 360,
-    y: 340,
-    levels: [
-      { level: 1, cardsReq: 3, cost: 60, capacity: 1, speed: 60, frenzyAdd: 18, desc: 'Hauls 1 log at 60 px/s (+18s Frenzy)' },
-      { level: 2, cardsReq: 5, cost: 140, capacity: 2, speed: 78, frenzyAdd: 28, desc: 'Log Cart: Hauls 2 logs at 78 px/s (+28s Frenzy)' },
-      { level: 3, cardsReq: 10, cost: 250, capacity: 3, speed: 98, frenzyAdd: 42, tip: 25, desc: 'Timber Master: 3 logs (+42s Frenzy +$25 Tip)' }
-    ]
-  }
-};
-
-export const WORKER_DEFS = MANAGER_DEFS;
-
-export const MANAGER_PREREQS = {
-  alex: {
-    label: 'Check in 1st camper party',
-    isMet: (game) => (game.state.stats?.totalCampersServed || 0) >= 1
-  },
-  oliver: {
-    label: 'Sweep 1 trash bag or serve 3 campers',
-    isMet: (game) => (game.state.stats?.trashCollected || 0) >= 1 || (game.state.stats?.totalCampersServed || 0) >= 3
-  },
-  sam: {
-    label: 'Serve 10 campers or build a pitch',
-    isMet: (game) => (game.state.stats?.totalCampersServed || 0) >= 10 || (game.state.stats?.pitchesBuilt || 0) >= 1
-  },
-  chloe: {
-    label: 'Build Caravan #2 or serve 6 campers',
-    isMet: (game) => game.completedPads?.has('pad_caravan_2') || (game.state.stats?.totalCampersServed || 0) >= 6
-  },
-  robin: {
-    label: 'Feed Campfire 3 times or build Robin\'s Cards',
-    isMet: (game) => (game.state.stats?.woodBurned || 0) >= 3 || game.completedPads?.has('pad_robin')
-  },
-  finn: {
-    label: 'Build Water Well or catch 3 fish',
-    isMet: (game) => game.hasWaterPump || (game.state.stats?.fishCaught || 0) >= 3
-  },
-  bella: {
-    label: 'Build Snack Kiosk',
-    isMet: (game) => !!game.hasKiosk
-  },
-  felix: {
-    label: 'Build Glamping Dome, Cabin or Chalet',
-    isMet: (game) => game.pitches.some(p => p.tier === 'glamping' || p.tier === 'cabin' || p.tier === 'chalet' || p.tier === 'lodge' || p.tier === 'villa')
-  }
-};
-
-export const CRATE_DEFS = {
-  free: {
-    id: 'free',
-    name: 'Free Supply Crate',
-    icon: '🎁',
-    cost: 0,
-    cooldown: 90,
-    minCards: 2,
-    maxCards: 3,
-    minCash: 25,
-    maxCash: 50,
-    desc: 'Contains 2-3 Manager Cards + $25-$50 Cash Bonus'
-  },
-  wooden: {
-    id: 'wooden',
-    name: 'Wooden Supply Crate',
-    icon: '📦',
-    cost: 80,
-    minCards: 4,
-    maxCards: 5,
-    minCash: 40,
-    maxCash: 80,
-    guaranteedRare: true,
-    desc: 'Guarantees 4-5 Cards + at least 1 Rare Card + Cash Bonus'
-  },
-  golden: {
-    id: 'golden',
-    name: 'Golden Resort Crate',
-    icon: '👑',
-    cost: 220,
-    minCards: 8,
-    maxCards: 10,
-    minCash: 100,
-    maxCash: 220,
-    guaranteedEpic: true,
-    guaranteedRare: true,
-    desc: 'Guarantees 8-10 Cards + Epic Manager Card + Mega Cash!'
-  },
-  mythic: {
-    id: 'mythic',
-    name: 'Mythic Supply Crate',
-    icon: '🔮',
-    currency: 'gems',
-    cost: 100,
-    minCards: 14,
-    maxCards: 18,
-    minCash: 350,
-    maxCash: 800,
-    guaranteedEpic: true,
-    guaranteedRare: true,
-    desc: 'Guarantees 14-18 Cards + 2+ Epics & 4+ Rares + Huge Cash!'
-  },
-  emperor: {
-    id: 'emperor',
-    name: 'Emperor Vault',
-    icon: '👑',
-    currency: 'gems',
-    cost: 250,
-    minCards: 32,
-    maxCards: 42,
-    minCash: 1200,
-    maxCash: 3000,
-    guaranteedEpic: true,
-    guaranteedRare: true,
-    desc: 'Guarantees 32-42 Cards + 6+ Epics & 10+ Rares + Mega Jackpot!'
-  }
-};
-
-export const WORLD_BIOMES = [
-  {
-    id: 'forest',
-    name: 'Pine Haven Forest',
-    theme: 'Meadow & Pines',
-    treeType: 'pine',
-    palette: {
-      grassLight: '#62b535',
-      grassMid: '#4b9824',
-      grassDark: '#367219',
-      dirtMid: '#cf9e54',
-      dirtDark: '#996f30',
-      waterLight: '#5dade2',
-      waterMid: '#2980b9',
-      waterDark: '#1b4f72',
-      treeLeaf: '#4b9824',
-      treeShadow: '#367219'
-    }
-  },
-  {
-    id: 'coastal',
-    name: 'Azure Cove Coast',
-    theme: 'Sandy Beach & Palm Bay',
-    treeType: 'palm',
-    palette: {
-      grassLight: '#f9e79f',
-      grassMid: '#f5cba7',
-      grassDark: '#d4ac0d',
-      dirtMid: '#e59866',
-      dirtDark: '#ba4a00',
-      waterLight: '#48c9b0',
-      waterMid: '#1abc9c',
-      waterDark: '#117864',
-      treeLeaf: '#27ae60',
-      treeShadow: '#196f3d'
-    }
-  },
-  {
-    id: 'alpine',
-    name: 'Alpine Peak Ridge',
-    theme: 'Snowy Conifers & Crisp Air',
-    treeType: 'pine',
-    palette: {
-      grassLight: '#d5dbdb',
-      grassMid: '#aeb6bf',
-      grassDark: '#566573',
-      dirtMid: '#85929e',
-      dirtDark: '#34495e',
-      waterLight: '#aed6f1',
-      waterMid: '#5dade2',
-      waterDark: '#2874a6',
-      treeLeaf: '#2e4053',
-      treeShadow: '#1b2631'
-    }
-  },
-  {
-    id: 'desert',
-    name: 'Sunfire Canyon Oasis',
-    theme: 'Cactus Groves & Red Rocks',
-    treeType: 'cactus',
-    palette: {
-      grassLight: '#f8c471',
-      grassMid: '#eb984e',
-      grassDark: '#ca6f1e',
-      dirtMid: '#d35400',
-      dirtDark: '#873600',
-      waterLight: '#76d7c4',
-      waterMid: '#17a589',
-      waterDark: '#117a65',
-      treeLeaf: '#1e8449',
-      treeShadow: '#145a32'
-    }
-  },
-  {
-    id: 'mystic',
-    name: 'Emerald Whispers Valley',
-    theme: 'Luminescent Flora & Ancient Trees',
-    treeType: 'pine',
-    palette: {
-      grassLight: '#a3e4d7',
-      grassMid: '#48c9b0',
-      grassDark: '#16a085',
-      dirtMid: '#bb8fce',
-      dirtDark: '#6c3483',
-      waterLight: '#bb8fce',
-      waterMid: '#8e44ad',
-      waterDark: '#512e5f',
-      treeLeaf: '#117864',
-      treeShadow: '#0e6251'
-    }
-  }
-];
-
-export function getCampKey(world = 1, region = 1, camp = 1) {
-  return `w${world}_r${region}_c${camp}`;
-}
-
-export const CAMP_MAP_CONFIGS = [
-  { camp: 1, w: 380, h: 540, pitches: 4, name: 'Forest Outpost', tier: 'Starter Glade' },
-  { camp: 2, w: 420, h: 600, pitches: 5, name: 'Trailside Camp', tier: 'Expanding Clearing' },
-  { camp: 3, w: 465, h: 670, pitches: 6, name: 'Riverbend Park', tier: 'Lakeside Camp' },
-  { camp: 4, w: 515, h: 740, pitches: 7, name: 'Meadow Valley', tier: 'Holiday Meadow' },
-  { camp: 5, w: 570, h: 820, pitches: 8, name: 'Pine Ridge Resort', tier: 'Active Resort' },
-  { camp: 6, w: 630, h: 900, pitches: 9, name: 'Sunny Oasis Park', tier: 'Holiday Park' },
-  { camp: 7, w: 690, h: 980, pitches: 10, name: 'Mountain Haven', tier: 'Luxury Alpine Resort' },
-  { camp: 8, w: 750, h: 1060, pitches: 11, name: 'Emerald Wilderness', tier: 'Expansive Eco Paradise' },
-  { camp: 9, w: 810, h: 1140, pitches: 12, name: 'Grand Vista Resort', tier: 'Mega Vacation Complex' },
-  { camp: 10, w: 880, h: 1240, pitches: 13, name: 'Imperial Empire Sanctuary', tier: 'Imperial Grand Resort' }
-];
-
-export function getCampSizeInfo(camp = 1) {
-  const c = CAMP_MAP_CONFIGS[Math.min(9, Math.max(0, camp - 1))];
-  return {
-    ...c,
-    size: `${c.w}x${c.h}`
-  };
-}
-
-export function calculateCampActiveRate(campData) {
-  if (!campData || !campData.managers) return 0;
-  const mgrs = campData.managers;
-  let totalRate = 0;
-
-  const w = campData.world || 1;
-  const r = campData.region || 1;
-  const c = campData.camp || 1;
-  const campProg = (c - 1) / 9;
-  const campScale = Math.pow(1.30, c - 1);
-  const incomeMult = Math.pow(campScale, 0.94) * (1.0 + (r - 1) * 0.12 + (w - 1) * 0.5);
-
-  // 1. Pitches revenue: requires front desk clerk (Alex or Sam)
-  const hasClerk = (mgrs.alex?.level > 0) || (mgrs.sam?.level > 0);
-  const pads = campData.completedPads || [];
-  const extraPitches = Array.isArray(pads) ? pads.filter(p =>
-    p.startsWith('pad_tent') ||
-    p.startsWith('pad_caravan') ||
-    p.startsWith('pad_glamp') ||
-    p.startsWith('pad_cabin') ||
-    p.startsWith('pad_chalet') ||
-    p.startsWith('pad_lodge') ||
-    p.startsWith('pad_villa')
-  ).length : 0;
-  const pitchCount = 2 + extraPitches;
-
-  if (hasClerk) {
-    totalRate += pitchCount * (3.8 * incomeMult);
-    const alexLvl = mgrs.alex?.level || 0;
-    const samLvl = mgrs.sam?.level || 0;
-    totalRate += alexLvl * (2.2 * incomeMult);
-    totalRate += samLvl * (3.0 * incomeMult);
-  } else {
-    // Basic turnover from manual checkins
-    totalRate += pitchCount * (1.8 * incomeMult);
-  }
-
-  // 2. Cleaners (Oliver, Chloe, Felix)
-  const oliverLvl = mgrs.oliver?.level || 0;
-  const chloeLvl = mgrs.chloe?.level || 0;
-  const felixLvl = mgrs.felix?.level || 0;
-  totalRate += oliverLvl * (2.0 * incomeMult);
-  totalRate += chloeLvl * (2.8 * incomeMult);
-  totalRate += felixLvl * (4.2 * incomeMult);
-
-  // 3. Specialists
-  // Finn (Fisherman)
-  if (mgrs.finn?.level > 0 && campData.hasWaterPump) {
-    const finnRates = [0, 8.5, 20.0, 50.0, 130.0];
-    const rVal = finnRates[mgrs.finn.level] || 8.5;
-    totalRate += rVal * (1.0 + campProg * 0.25);
-  }
-
-  // Bella (Snack Kiosk)
-  if (mgrs.bella?.level > 0 && campData.hasKiosk) {
-    const bellaRates = [0, 6.5, 16.0, 42.0, 110.0];
-    const bVal = bellaRates[mgrs.bella.level] || 6.5;
-    totalRate += bVal * (1.0 + campProg * 0.25);
-  }
-
-  // Robin (Campfire Joy Frenzy boost)
-  if (mgrs.robin?.level > 0) {
-    const boost = 1.0 + 0.18 * mgrs.robin.level;
-    totalRate *= boost;
-  }
-
-  return Math.round(totalRate * 10) / 10;
-}
-
-export function calculateCampIdleRate(campData) {
-  const activeRate = calculateCampActiveRate(campData);
-  // Franchise Passive Efficiency (28% of active throughput for idle background campsites)
-  const franchisePassiveEfficiency = 0.28;
-  return Math.round(activeRate * franchisePassiveEfficiency * 10) / 10;
-}
-
-export function getCampAchievementDefs(world = 1, region = 1, camp = 1) {
-  // Balanced progression curve across 10 camps per region
-  const campScale = Math.pow(1.26, camp - 1) * (1.0 + (region - 1) * 0.10 + (world - 1) * 0.4);
-
-  const mAlex = Math.min(10, 2 + Math.floor(camp * 0.6));
-  const mSam = Math.min(10, 2 + Math.floor(camp * 0.6));
-  const mRobin = Math.min(10, 2 + Math.floor(camp * 0.6));
-  const mOliver = Math.min(10, 2 + Math.floor(camp * 0.6));
-  const mChloe = Math.min(10, 2 + Math.floor(camp * 0.6));
-  const mFelix = Math.min(10, 2 + Math.floor(camp * 0.7));
-  const mFinn = Math.min(10, 2 + Math.floor(camp * 0.6));
-  const mBella = Math.min(10, 2 + Math.floor(camp * 0.6));
-
-  const c1 = 1;
-  const c10 = Math.min(32, Math.round(8 + camp * 1.6));
-  const w3 = Math.min(15, Math.round(2 + camp * 0.9));
-  const t5 = Math.min(20, Math.round(4 + camp * 1.2));
-  const t15 = Math.min(45, Math.round(10 + camp * 2.4));
-  const p2 = 1;
-  const p5 = Math.min(8, Math.max(2, Math.floor(1.2 + camp * 0.8)));
-  const f3 = Math.min(12, Math.round(2 + camp * 0.8));
-  const k3 = Math.min(15, Math.round(2 + camp * 0.9));
-  const cashGoal = Math.round(200 * campScale);
-  const utilGoal = camp >= 5 ? 3 : 2;
-
-  const cashReward = (base) => Math.round(base * Math.pow(campScale, 0.88));
-
-  return [
-    {
-      id: 'first_checkin',
-      title: 'First Arrival',
-      icon: '🏕️',
-      desc: `Check in 1 camper party`,
-      goal: c1,
-      getStat: (s) => s.stats?.totalCampersServed || 0,
-      rewardDesc: `+${mAlex} Alex Cards, +$${cashReward(30)}, +5 💎`,
-      reward: { cards: { alex: mAlex }, cash: cashReward(30), gems: 5 }
-    },
-    {
-      id: 'busy_reception',
-      title: 'Bustling Resort',
-      icon: '📋',
-      desc: `Check in ${c10} camper parties`,
-      goal: c10,
-      getStat: (s) => s.stats?.totalCampersServed || 0,
-      rewardDesc: `+${mSam} Sam Cards, +$${cashReward(60)}, +10 💎`,
-      reward: { cards: { sam: mSam }, cash: cashReward(60), gems: 10 }
-    },
-    {
-      id: 'campfire_glow',
-      title: 'Campfire Warmth',
-      icon: '🔥',
-      desc: `Feed firewood to the campfire ${w3} times`,
-      goal: w3,
-      getStat: (s) => s.stats?.woodBurned || 0,
-      rewardDesc: `+${mRobin} Robin Cards, +$${cashReward(50)}, +8 💎`,
-      reward: { cards: { robin: mRobin }, cash: cashReward(50), gems: 8 }
-    },
-    {
-      id: 'eco_warrior',
-      title: 'Clean Campground',
-      icon: '🧹',
-      desc: `Sweep up ${t5} trash bags`,
-      goal: t5,
-      getStat: (s) => s.stats?.trashCollected || 0,
-      rewardDesc: `+${mOliver} Oliver Cards, +$${cashReward(40)}, +6 💎`,
-      reward: { cards: { oliver: mOliver }, cash: cashReward(40), gems: 6 }
-    },
-    {
-      id: 'clean_sweep',
-      title: 'Zero Waste Hero',
-      icon: '🧽',
-      desc: `Sweep up ${t15} trash bags`,
-      goal: t15,
-      getStat: (s) => s.stats?.trashCollected || 0,
-      rewardDesc: `+${mChloe} Chloe Cards, +$${cashReward(80)}, +12 💎`,
-      reward: { cards: { chloe: mChloe }, cash: cashReward(80), gems: 12 }
-    },
-    {
-      id: 'first_expansion',
-      title: 'Camp Expansion',
-      icon: '⛺',
-      desc: `Build ${p2} accommodation pitch`,
-      goal: p2,
-      getStat: (s) => s.stats?.pitchesBuilt || 0,
-      rewardDesc: `+${mChloe} Chloe Cards, +$${cashReward(50)}, +8 💎`,
-      reward: { cards: { chloe: mChloe }, cash: cashReward(50), gems: 8 }
-    },
-    {
-      id: 'resort_builder',
-      title: 'Resort Mogul',
-      icon: '🏡',
-      desc: `Build ${p5} accommodation pitches`,
-      goal: p5,
-      getStat: (s) => s.stats?.pitchesBuilt || 0,
-      rewardDesc: `+${mFelix} Felix Cards, +$${cashReward(120)}, +15 💎`,
-      reward: { cards: { felix: mFelix }, cash: cashReward(120), gems: 15 }
-    },
-    {
-      id: 'master_angler',
-      title: 'Pond Fisherman',
-      icon: '🎣',
-      desc: `Catch ${f3} prize fish at the pond pier`,
-      goal: f3,
-      getStat: (s) => s.stats?.fishCaught || 0,
-      rewardDesc: `+${mFinn} Finn Cards, +$${cashReward(70)}, +10 💎`,
-      reward: { cards: { finn: mFinn }, cash: cashReward(70), gems: 10 }
-    },
-    {
-      id: 'snack_attack',
-      title: 'Kiosk Barista',
-      icon: '☕',
-      desc: `Make ${k3} sales at the Snack Kiosk`,
-      goal: k3,
-      getStat: (s) => s.stats?.kioskOrders || 0,
-      rewardDesc: `+${mBella} Bella Cards, +$${cashReward(60)}, +10 💎`,
-      reward: { cards: { bella: mBella }, cash: cashReward(60), gems: 10 }
-    },
-    {
-      id: 'cash_flow',
-      title: 'Gold Rush',
-      icon: '💵',
-      desc: `Earn a total of $${cashGoal} campsite revenue`,
-      goal: cashGoal,
-      getStat: (s) => s.stats?.totalCashEarned || 0,
-      rewardDesc: `+${mRobin} Robin, +${mFelix} Felix, +$${cashReward(150)}, +20 💎`,
-      reward: { cards: { robin: mRobin, felix: mFelix }, cash: cashReward(150), gems: 20 }
-    },
-    {
-      id: 'power_grid',
-      title: 'Power & Water',
-      icon: '⚡',
-      desc: camp >= 5 ? 'Build Generator, Water Well & Sports Field' : 'Build Generator Shed & Water Pump',
-      goal: utilGoal,
-      getStat: (s) => s.stats?.utilitiesBuilt || 0,
-      rewardDesc: `+${mSam} Sam, +${mFinn} Finn, +$${cashReward(100)}, +12 💎`,
-      reward: { cards: { sam: mSam, finn: mFinn }, cash: cashReward(100), gems: 12 }
-    }
-  ];
-}
 
 class Campers2DGame {
   constructor() {
@@ -632,9 +57,17 @@ class Campers2DGame {
     this.camY = 0;
     this.frame = 0;
 
+    // Modular Architecture Subsystems
+    this.stateStore = new GameState();
+    this.economy = new EconomySystem(this);
+    this.drawerUI = new DrawerUI(this);
+    this.mainMenuUI = new MainMenuUI(this);
+    this.hud = new HUDController(this);
+    this.modalsUI = new ModalsUI(this);
+
     // Game Economy & State (Dual Currency: Local Camp Cash & Global Empire Vault)
     this.state = {
-      cash: 60, // Local Camp Cash
+      cash: 150, // Local Camp Cash
       empireGold: 0, // Global Empire Vault (passive revenue from automated camps)
       gems: 25,
       boostTimer: 0,
@@ -709,6 +142,10 @@ class Campers2DGame {
         fishCaught: 0,
         kioskOrders: 0,
         totalCashEarned: 60
+      },
+      buildingLevels: {
+        tent_1: 1,
+        caravan_1: 1
       }
     };
 
@@ -719,6 +156,8 @@ class Campers2DGame {
     this.activeMainTab = 'managers';
     this.activeManagerFilter = 'all';
     this.pendingLoot = null;
+    this.staffOnStrike = false;
+    this.payrollTimer = 0;
 
     // Entities
     this.player = {
@@ -734,6 +173,7 @@ class Campers2DGame {
     this.campers = [];
     this.pitches = [];
     this.buildPads = [];
+    this.upgradePads = [];
     this.cashDrops = [];
     this.trashBags = [];
     this.floatTexts = [];
@@ -760,7 +200,7 @@ class Campers2DGame {
 
     // Initialize systems
     this.isResetting = false;
-    this.isMainMenuOpen = true;
+    this.isMainMenuOpen = false;
 
     // Support clean URL reset via ?reset=1 or ?new=1
     if (typeof window !== 'undefined' && (window.location.search.includes('reset=1') || window.location.search.includes('new=1'))) {
@@ -773,11 +213,11 @@ class Campers2DGame {
 
     this.completedPads = new Set();
     this.onResize();
-    this.initWorld();
     this.initControls();
     this.initUI();
+    this.initWorld();
     this.loadState();
-    this.openMainMenu();
+    this.closeMainMenu();
 
     window.addEventListener('beforeunload', () => this.saveState());
 
@@ -812,6 +252,8 @@ class Campers2DGame {
     const campCostScale = Math.pow(1.30, camp - 1);
     const costMult = campCostScale * (1.0 + regionBonus + worldBonus);
     const incomeMult = Math.pow(campCostScale, 0.94) * (1.0 + regionBonus + worldBonus);
+    this.costMult = costMult;
+    this.incomeMult = incomeMult;
 
     // World Map dimensions scale dynamically using 10-tier configuration:
     // Camp 1: 380x540 (compact starter) -> Camp 10: 880x1240 (imperial grand resort)
@@ -819,9 +261,10 @@ class Campers2DGame {
     this.worldW = campCfg.w;
     this.worldH = campCfg.h;
 
-    // Biome theme index (cycles every 2 regions through 5 biomes)
-    const biomeIdx = Math.floor((region - 1) / 2) % WORLD_BIOMES.length;
-    this.currentBiome = WORLD_BIOMES[biomeIdx];
+    // Earth Region definition (100 distinct real-world regions)
+    this.currentRegionDef = getEarthRegionDef(region);
+    this.currentBiome = this.currentRegionDef;
+    this.accommodationStyle = this.currentRegionDef.accommodationStyle || 'classic';
 
     // Key Map Landmarks positioned relative to world size
     const centerX = Math.round(this.worldW / 2);
@@ -843,6 +286,7 @@ class Campers2DGame {
     // Reset runtime entities
     this.pitches = [];
     this.buildPads = [];
+    this.upgradePads = [];
     this.cashDrops = [];
     this.trashBags = [];
     this.floatTexts = [];
@@ -850,7 +294,7 @@ class Campers2DGame {
     this.campers = [];
 
     // --- STARTER PITCHES ---
-    this.pitches.push({
+    this.registerPitch({
       id: 'tent_1',
       name: 'Pup Tent #1',
       tier: 'tent',
@@ -860,14 +304,14 @@ class Campers2DGame {
       dropY: Math.round(this.worldH * 0.48) + 5,
       capacity: 2,
       guests: [],
-      stayDuration: 7.0,
+      stayDuration: 4.5,
       stayTimer: 0,
-      baseIncome: Math.round(25 * incomeMult),
+      baseIncome: Math.round(35 * incomeMult),
       powerLoad: 0,
       waterLoad: 0
     });
 
-    this.pitches.push({
+    this.registerPitch({
       id: 'caravan_1',
       name: 'Caravan #1',
       tier: 'caravan',
@@ -877,9 +321,9 @@ class Campers2DGame {
       dropY: Math.round(this.worldH * 0.36) + 16,
       capacity: 3,
       guests: [],
-      stayDuration: 11.0,
+      stayDuration: 7.5,
       stayTimer: 0,
-      baseIncome: Math.round(65 * incomeMult),
+      baseIncome: Math.round(95 * incomeMult),
       powerLoad: 1,
       waterLoad: 1
     });
@@ -889,11 +333,11 @@ class Campers2DGame {
     this.createBuildPad({
       id: 'pad_tent_2',
       name: 'Pup Tent #2',
-      cost: Math.round(45 * costMult),
+      cost: Math.round(110 * costMult),
       x: Math.round(centerX - 90),
       y: Math.round(this.worldH * 0.38),
       onComplete: (isRestoring = false) => {
-        this.pitches.push({
+        this.registerPitch({
           id: 'tent_2',
           name: 'Pup Tent #2',
           tier: 'tent',
@@ -903,13 +347,12 @@ class Campers2DGame {
           dropY: Math.round(this.worldH * 0.38) + 5,
           capacity: 2,
           guests: [],
-          stayDuration: 7.0,
+          stayDuration: 4.5,
           stayTimer: 0,
-          baseIncome: Math.round(25 * incomeMult),
+          baseIncome: Math.round(35 * incomeMult),
           powerLoad: 0,
           waterLoad: 0
         });
-        this.updateGridLoad();
       }
     });
 
@@ -917,11 +360,11 @@ class Campers2DGame {
     this.createBuildPad({
       id: 'pad_caravan_2',
       name: 'Caravan #2',
-      cost: Math.round(95 * costMult),
+      cost: Math.round(220 * costMult),
       x: Math.round(centerX + 90),
       y: Math.round(this.worldH * 0.46),
       onComplete: (isRestoring = false) => {
-        this.pitches.push({
+        this.registerPitch({
           id: 'caravan_2',
           name: 'Caravan #2',
           tier: 'caravan',
@@ -931,13 +374,12 @@ class Campers2DGame {
           dropY: Math.round(this.worldH * 0.46) + 16,
           capacity: 3,
           guests: [],
-          stayDuration: 11.0,
+          stayDuration: 7.5,
           stayTimer: 0,
-          baseIncome: Math.round(70 * incomeMult),
+          baseIncome: Math.round(105 * incomeMult),
           powerLoad: 1,
           waterLoad: 1
         });
-        this.updateGridLoad();
       }
     });
 
@@ -946,11 +388,11 @@ class Campers2DGame {
       this.createBuildPad({
         id: 'pad_tent_3',
         name: 'Pup Tent #3',
-        cost: Math.round(65 * costMult),
+        cost: Math.round(280 * costMult),
         x: Math.round(centerX - 90),
         y: Math.round(this.worldH * 0.28),
         onComplete: (isRestoring = false) => {
-          this.pitches.push({
+          this.registerPitch({
             id: 'tent_3',
             name: 'Pup Tent #3',
             tier: 'tent',
@@ -966,7 +408,6 @@ class Campers2DGame {
             powerLoad: 0,
             waterLoad: 0
           });
-          this.updateGridLoad();
         }
       });
     }
@@ -976,11 +417,11 @@ class Campers2DGame {
       this.createBuildPad({
         id: 'pad_glamp',
         name: 'Glamping Dome',
-        cost: Math.round(200 * costMult),
+        cost: Math.round(580 * costMult),
         x: centerX,
         y: Math.round(this.worldH * 0.24),
         onComplete: (isRestoring = false) => {
-          this.pitches.push({
+          this.registerPitch({
             id: 'glamp_3',
             name: 'Glamping Dome',
             tier: 'glamping',
@@ -996,24 +437,22 @@ class Campers2DGame {
             powerLoad: 2,
             waterLoad: 2
           });
-          this.updateGridLoad();
           if (this.state.managers.felix?.level > 0) {
             this.spawnWorkerEntity('felix');
           }
         }
       });
     }
-
     // Pad 5: Retro Bus Caravan (Camp 4+)
     if (camp >= 4) {
       this.createBuildPad({
         id: 'pad_caravan_3',
         name: 'Retro Bus Caravan',
-        cost: Math.round(180 * costMult),
+        cost: Math.round(480 * costMult),
         x: Math.round(centerX + 95),
         y: Math.round(this.worldH * 0.56),
         onComplete: (isRestoring = false) => {
-          this.pitches.push({
+          this.registerPitch({
             id: 'caravan_3',
             name: 'Retro Bus Caravan',
             tier: 'caravan',
@@ -1029,7 +468,6 @@ class Campers2DGame {
             powerLoad: 1,
             waterLoad: 1
           });
-          this.updateGridLoad();
         }
       });
     }
@@ -1039,11 +477,11 @@ class Campers2DGame {
       this.createBuildPad({
         id: 'pad_cabin',
         name: 'Log Cabin',
-        cost: Math.round(280 * costMult),
+        cost: Math.round(850 * costMult),
         x: centerX,
         y: Math.round(this.worldH * 0.12),
         onComplete: (isRestoring = false) => {
-          this.pitches.push({
+          this.registerPitch({
             id: 'cabin_4',
             name: 'Log Cabin',
             tier: 'cabin',
@@ -1059,7 +497,6 @@ class Campers2DGame {
             powerLoad: 2,
             waterLoad: 2
           });
-          this.updateGridLoad();
           if (this.state.managers.felix?.level > 0) {
             this.spawnWorkerEntity('felix');
           }
@@ -1072,11 +509,11 @@ class Campers2DGame {
       this.createBuildPad({
         id: 'pad_glamp_2',
         name: 'Starlight Dome',
-        cost: Math.round(350 * costMult),
+        cost: Math.round(1200 * costMult),
         x: Math.round(centerX - 100),
         y: Math.round(this.worldH * 0.16),
         onComplete: (isRestoring = false) => {
-          this.pitches.push({
+          this.registerPitch({
             id: 'glamp_2',
             name: 'Starlight Dome',
             tier: 'glamping',
@@ -1092,7 +529,6 @@ class Campers2DGame {
             powerLoad: 2,
             waterLoad: 2
           });
-          this.updateGridLoad();
           if (this.state.managers.felix?.level > 0) {
             this.spawnWorkerEntity('felix');
           }
@@ -1105,11 +541,11 @@ class Campers2DGame {
       this.createBuildPad({
         id: 'pad_chalet',
         name: 'Forest Chalet',
-        cost: Math.round(480 * costMult),
+        cost: Math.round(1650 * costMult),
         x: Math.round(centerX + 110),
         y: Math.round(this.worldH * 0.16),
         onComplete: (isRestoring = false) => {
-          this.pitches.push({
+          this.registerPitch({
             id: 'chalet_1',
             name: 'Forest Chalet',
             tier: 'chalet',
@@ -1125,7 +561,6 @@ class Campers2DGame {
             powerLoad: 3,
             waterLoad: 3
           });
-          this.updateGridLoad();
           if (this.state.managers.felix?.level > 0) {
             this.spawnWorkerEntity('felix');
           }
@@ -1138,11 +573,11 @@ class Campers2DGame {
       this.createBuildPad({
         id: 'pad_caravan_4',
         name: 'Luxury RV Haven',
-        cost: Math.round(620 * costMult),
+        cost: Math.round(2200 * costMult),
         x: Math.round(centerX + 120),
         y: Math.round(this.worldH * 0.64),
         onComplete: (isRestoring = false) => {
-          this.pitches.push({
+          this.registerPitch({
             id: 'caravan_4',
             name: 'Luxury RV Haven',
             tier: 'caravan',
@@ -1158,7 +593,6 @@ class Campers2DGame {
             powerLoad: 2,
             waterLoad: 2
           });
-          this.updateGridLoad();
         }
       });
     }
@@ -1168,11 +602,11 @@ class Campers2DGame {
       this.createBuildPad({
         id: 'pad_lodge',
         name: 'Safari Lodge',
-        cost: Math.round(850 * costMult),
+        cost: Math.round(3200 * costMult),
         x: Math.round(centerX - 120),
         y: Math.round(this.worldH * 0.08),
         onComplete: (isRestoring = false) => {
-          this.pitches.push({
+          this.registerPitch({
             id: 'lodge_1',
             name: 'Safari Lodge',
             tier: 'lodge',
@@ -1188,7 +622,6 @@ class Campers2DGame {
             powerLoad: 3,
             waterLoad: 3
           });
-          this.updateGridLoad();
           if (this.state.managers.felix?.level > 0) {
             this.spawnWorkerEntity('felix');
           }
@@ -1201,11 +634,11 @@ class Campers2DGame {
       this.createBuildPad({
         id: 'pad_villa',
         name: 'Imperial Royal Villa',
-        cost: Math.round(1350 * costMult),
+        cost: Math.round(5000 * costMult),
         x: Math.round(centerX + 120),
         y: Math.round(this.worldH * 0.08),
         onComplete: (isRestoring = false) => {
-          this.pitches.push({
+          this.registerPitch({
             id: 'villa_1',
             name: 'Imperial Royal Villa',
             tier: 'villa',
@@ -1221,7 +654,6 @@ class Campers2DGame {
             powerLoad: 4,
             waterLoad: 4
           });
-          this.updateGridLoad();
           if (this.state.managers.felix?.level > 0) {
             this.spawnWorkerEntity('felix');
           }
@@ -1233,12 +665,13 @@ class Campers2DGame {
     this.createBuildPad({
       id: 'pad_water',
       name: 'Water Well',
-      cost: Math.round(110 * costMult),
+      cost: Math.round(65 * costMult),
       x: this.waterPos.x,
       y: this.waterPos.y,
       onComplete: (isRestoring = false) => {
         this.hasWaterPump = true;
-        this.state.waterCapacity += 6 + Math.floor(camp * 0.5);
+        this.updateGridLoad();
+        this.refreshUpgradePads();
         if (!isRestoring) this.showFloatText(this.waterPos.x, this.waterPos.y, '+💧 Water System!', '#3498db');
         this.updateHUD();
       }
@@ -1247,12 +680,13 @@ class Campers2DGame {
     this.createBuildPad({
       id: 'pad_gen',
       name: 'Generator',
-      cost: Math.round(140 * costMult),
+      cost: Math.round(85 * costMult),
       x: this.genPos.x,
       y: this.genPos.y,
       onComplete: (isRestoring = false) => {
         this.hasGenerator = true;
-        this.state.powerCapacity += 6 + Math.floor(camp * 0.5);
+        this.updateGridLoad();
+        this.refreshUpgradePads();
         if (!isRestoring) this.showFloatText(this.genPos.x, this.genPos.y, '+⚡ Power Grid!', '#f1c40f');
         this.updateHUD();
       }
@@ -1261,11 +695,12 @@ class Campers2DGame {
     this.createBuildPad({
       id: 'pad_kiosk',
       name: 'Snack Kiosk',
-      cost: Math.round(90 * costMult),
+      cost: Math.round(70 * costMult),
       x: this.kioskPos.x,
       y: this.kioskPos.y,
       onComplete: (isRestoring = false) => {
         this.hasKiosk = true;
+        this.refreshUpgradePads();
         if (!isRestoring) this.showFloatText(this.kioskPos.x, this.kioskPos.y, '☕ Kiosk Open!', '#e67e22');
         this.updateHUD();
         if (this.state.managers.bella?.level > 0) {
@@ -1283,6 +718,7 @@ class Campers2DGame {
         y: this.sportsFieldPos.y,
         onComplete: (isRestoring = false) => {
           this.hasSportsField = true;
+          this.refreshUpgradePads();
           if (!isRestoring) this.showFloatText(this.sportsFieldPos.x, this.sportsFieldPos.y, '⚽ Sports Open!', '#27ae60');
           this.updateHUD();
         }
@@ -1336,6 +772,9 @@ class Campers2DGame {
         }
       });
     }
+
+    this.refreshUpgradePads();
+    this.updateGridLoad();
   }
 
   createBuildPad(config) {
@@ -1345,6 +784,236 @@ class Campers2DGame {
       radius: 20,
       isCompleted: false
     });
+  }
+
+  registerPitch(pitchData) {
+    if (!this.state.buildingLevels) this.state.buildingLevels = {};
+    const lvl = this.state.buildingLevels[pitchData.id] || 1;
+    this.state.buildingLevels[pitchData.id] = lvl;
+
+    pitchData.level = lvl;
+    pitchData.baseCapacity = pitchData.baseCapacity || pitchData.capacity;
+    pitchData.capacity = pitchData.baseCapacity + getBuildingBonusCapacity(lvl);
+    pitchData.incomeMult = getBuildingIncomeMultiplier(lvl);
+    pitchData.rawBaseIncome = pitchData.rawBaseIncome || pitchData.baseIncome;
+    pitchData.baseIncome = Math.round(pitchData.rawBaseIncome * pitchData.incomeMult);
+
+    const existingIdx = this.pitches.findIndex(p => p.id === pitchData.id);
+    if (existingIdx >= 0) {
+      this.pitches[existingIdx] = pitchData;
+    } else {
+      this.pitches.push(pitchData);
+    }
+    if (this.ui) {
+      this.refreshUpgradePads();
+      this.updateGridLoad();
+    }
+    return pitchData;
+  }
+
+  refreshUpgradePads() {
+    const world = this.state.world || 1;
+    const region = this.state.region || 1;
+    const camp = this.state.camp || 1;
+    const maxLevel = getMaxBuildingLevel(world, region, camp);
+    const costMult = this.costMult || 1.0;
+
+    const previousPaid = {};
+    if (this.upgradePads) {
+      this.upgradePads.forEach(p => {
+        previousPaid[p.buildingId] = p.paid || 0;
+      });
+    }
+
+    const newUpgradePads = [];
+
+    // 1. Pitches upgrade pads
+    this.pitches.forEach(pitch => {
+      const curLvl = this.state.buildingLevels?.[pitch.id] || 1;
+      if (curLvl < maxLevel) {
+        const cost = getBuildingUpgradeCost(pitch.id, curLvl, costMult);
+        newUpgradePads.push({
+          buildingId: pitch.id,
+          buildingType: 'pitch',
+          name: pitch.name,
+          currentLevel: curLvl,
+          targetLevel: curLvl + 1,
+          maxLevel,
+          cost,
+          paid: Math.min(cost, previousPaid[pitch.id] || 0),
+          x: pitch.x,
+          y: pitch.y + 16,
+          radius: 16
+        });
+      }
+    });
+
+    // 2. Utility upgrade pads
+    if (this.hasGenerator) {
+      const curLvl = this.state.buildingLevels?.['pad_gen'] || 1;
+      if (curLvl < maxLevel) {
+        const cost = getBuildingUpgradeCost('pad_gen', curLvl, costMult);
+        newUpgradePads.push({
+          buildingId: 'pad_gen',
+          buildingType: 'utility',
+          name: 'Generator',
+          currentLevel: curLvl,
+          targetLevel: curLvl + 1,
+          maxLevel,
+          cost,
+          paid: Math.min(cost, previousPaid['pad_gen'] || 0),
+          x: this.genPos.x,
+          y: this.genPos.y + 16,
+          radius: 16
+        });
+      }
+    }
+
+    if (this.hasWaterPump) {
+      const curLvl = this.state.buildingLevels?.['pad_water'] || 1;
+      if (curLvl < maxLevel) {
+        const cost = getBuildingUpgradeCost('pad_water', curLvl, costMult);
+        newUpgradePads.push({
+          buildingId: 'pad_water',
+          buildingType: 'utility',
+          name: 'Water Well',
+          currentLevel: curLvl,
+          targetLevel: curLvl + 1,
+          maxLevel,
+          cost,
+          paid: Math.min(cost, previousPaid['pad_water'] || 0),
+          x: this.waterPos.x,
+          y: this.waterPos.y + 16,
+          radius: 16
+        });
+      }
+    }
+
+    if (this.hasKiosk) {
+      const curLvl = this.state.buildingLevels?.['pad_kiosk'] || 1;
+      if (curLvl < maxLevel) {
+        const cost = getBuildingUpgradeCost('pad_kiosk', curLvl, costMult);
+        newUpgradePads.push({
+          buildingId: 'pad_kiosk',
+          buildingType: 'utility',
+          name: 'Snack Kiosk',
+          currentLevel: curLvl,
+          targetLevel: curLvl + 1,
+          maxLevel,
+          cost,
+          paid: Math.min(cost, previousPaid['pad_kiosk'] || 0),
+          x: this.kioskPos.x,
+          y: this.kioskPos.y + 16,
+          radius: 16
+        });
+      }
+    }
+
+    if (this.hasSportsField) {
+      const curLvl = this.state.buildingLevels?.['pad_sports'] || 1;
+      if (curLvl < maxLevel) {
+        const cost = getBuildingUpgradeCost('pad_sports', curLvl, costMult);
+        newUpgradePads.push({
+          buildingId: 'pad_sports',
+          buildingType: 'utility',
+          name: 'Sports Field',
+          currentLevel: curLvl,
+          targetLevel: curLvl + 1,
+          maxLevel,
+          cost,
+          paid: Math.min(cost, previousPaid['pad_sports'] || 0),
+          x: this.sportsFieldPos.x,
+          y: this.sportsFieldPos.y + 16,
+          radius: 16
+        });
+      }
+    }
+
+    this.upgradePads = newUpgradePads;
+  }
+
+  updateUpgradePads(dt) {
+    if (!this.upgradePads || this.upgradePads.length === 0) return;
+
+    const investLvl = this.state.franchiseUpgrades?.investSpeedLevel || 1;
+    const investMult = 1.0 + (investLvl - 1) * 0.50;
+
+    for (let i = this.upgradePads.length - 1; i >= 0; i--) {
+      const pad = this.upgradePads[i];
+      const dist = Math.hypot(this.player.x - pad.x, this.player.y - pad.y);
+
+      if (dist < pad.radius && this.state.cash > 0 && pad.paid < pad.cost) {
+        pad.standTimer = (pad.standTimer || 0) + dt;
+        const ramp = Math.min(6.0, 1.0 + pad.standTimer * 1.5);
+        const ratePerSec = 160 * investMult * ramp;
+        const needed = pad.cost - pad.paid;
+        const stream = Math.min(this.state.cash, needed, ratePerSec * dt);
+
+        if (stream > 0) {
+          this.state.cash -= stream;
+          pad.paid += stream;
+
+          pad.popTimer = (pad.popTimer || 0) + dt;
+          if (pad.popTimer >= 0.08) {
+            window.soundFX?.playPop();
+            pad.popTimer = 0;
+          }
+
+          if (Math.random() < 0.35) {
+            this.particles.push({
+              x: this.player.x + (Math.random() - 0.5) * 8,
+              y: this.player.y - 12 + (Math.random() - 0.5) * 8,
+              vx: (pad.x - this.player.x) * 1.8 + (Math.random() - 0.5) * 8,
+              vy: (pad.y - this.player.y) * 1.8 + (Math.random() - 0.5) * 8,
+              size: 2.0,
+              life: 0.35,
+              color: '#3498db'
+            });
+          }
+
+          this.updateHUD();
+        }
+
+        if (pad.paid >= pad.cost) {
+          const newLevel = pad.targetLevel;
+          const mult = getBuildingIncomeMultiplier(newLevel);
+          window.soundFX?.playFanfare();
+          this.showFloatText(pad.x, pad.y - 12, `⭐ ${pad.name} Lv.${newLevel}! (+${Math.round((mult - 1) * 100)}% Ertrag)`, '#3498db');
+          this.levelUpBuilding(pad.buildingId, pad.buildingType);
+          break;
+        }
+      } else {
+        pad.standTimer = 0;
+      }
+    }
+  }
+
+  levelUpBuilding(buildingId, type = 'pitch') {
+    if (!this.state.buildingLevels) this.state.buildingLevels = {};
+    const curLevel = this.state.buildingLevels[buildingId] || 1;
+    const maxLevel = getMaxBuildingLevel(this.state.world, this.state.region, this.state.camp);
+    if (curLevel >= maxLevel) return;
+
+    const newLevel = curLevel + 1;
+    this.state.buildingLevels[buildingId] = newLevel;
+
+    const pitch = this.pitches.find(p => p.id === buildingId);
+    if (pitch) {
+      pitch.level = newLevel;
+      pitch.capacity = (pitch.baseCapacity || pitch.capacity) + getBuildingBonusCapacity(newLevel);
+      pitch.incomeMult = getBuildingIncomeMultiplier(newLevel);
+      pitch.baseIncome = Math.round((pitch.rawBaseIncome || pitch.baseIncome) * pitch.incomeMult);
+    }
+
+    if (!this.state.stats) this.state.stats = {};
+    this.state.stats.buildingUpgrades = (this.state.stats.buildingUpgrades || 0) + 1;
+    this.state.stats.highestBuildingLevel = Math.max(this.state.stats.highestBuildingLevel || 1, newLevel);
+    this.state.stats.totalBuildingLevels = getTotalBuildingLevels(this.state.buildingLevels);
+
+    this.updateGridLoad();
+    this.refreshUpgradePads();
+    this.updateBadges();
+    this.saveState();
   }
 
   getTotalCapacity() {
@@ -1359,11 +1028,26 @@ class Campers2DGame {
     let power = 0;
     let water = 0;
     this.pitches.forEach(p => {
-      power += p.powerLoad;
-      water += p.waterLoad;
+      power += (p.powerLoad || 0);
+      water += (p.waterLoad || 0);
     });
     this.state.powerDemand = power;
     this.state.waterDemand = water;
+
+    const camp = this.state.camp || 1;
+    let basePowerCap = 5;
+    if (this.hasGenerator) {
+      const genLvl = this.state.buildingLevels?.['pad_gen'] || 1;
+      basePowerCap += (6 + Math.floor(camp * 0.5)) + (genLvl - 1) * 3;
+    }
+    this.state.powerCapacity = basePowerCap;
+
+    let baseWaterCap = 5;
+    if (this.hasWaterPump) {
+      const waterLvl = this.state.buildingLevels?.['pad_water'] || 1;
+      baseWaterCap += (6 + Math.floor(camp * 0.5)) + (waterLvl - 1) * 3;
+    }
+    this.state.waterCapacity = baseWaterCap;
 
     if (this.state.powerDemand > this.state.powerCapacity) {
       window.soundFX?.playOverload();
@@ -1418,6 +1102,11 @@ class Campers2DGame {
 
     window.addEventListener('touchstart', (e) => {
       if (this.isMainMenuOpen) return;
+      if (this.ui?.upgradesDrawer?.classList.contains('open')) return;
+      if (this.ui?.worldModal && this.ui.worldModal.style.display !== 'none') return;
+      if (this.ui?.crateModal && this.ui.crateModal.style.display !== 'none') return;
+      if (this.ui?.eventsModal && this.ui.eventsModal.style.display !== 'none') return;
+      if (e.target && e.target.closest && e.target.closest('button, .drawer, .bottom-bar, .top-hud, .banners-container, .modal-overlay, .crate-modal-overlay, .world-modal-overlay, .events-modal-overlay, .main-menu-overlay')) return;
       const t = e.touches[0];
       if (t.clientY > window.innerHeight * 0.35) {
         handleStart(t.clientX, t.clientY);
@@ -1438,7 +1127,12 @@ class Campers2DGame {
     let isMouseDown = false;
     window.addEventListener('mousedown', (e) => {
       if (this.isMainMenuOpen) return;
-      if (e.clientY > window.innerHeight * 0.35 && e.target.tagName !== 'BUTTON') {
+      if (this.ui?.upgradesDrawer?.classList.contains('open')) return;
+      if (this.ui?.worldModal && this.ui.worldModal.style.display !== 'none') return;
+      if (this.ui?.crateModal && this.ui.crateModal.style.display !== 'none') return;
+      if (this.ui?.eventsModal && this.ui.eventsModal.style.display !== 'none') return;
+      if (e.target && e.target.closest && e.target.closest('button, .drawer, .bottom-bar, .top-hud, .banners-container, .modal-overlay, .crate-modal-overlay, .world-modal-overlay, .events-modal-overlay, .main-menu-overlay')) return;
+      if (e.clientY > window.innerHeight * 0.35) {
         isMouseDown = true;
         handleStart(e.clientX, e.clientY);
       }
@@ -1505,6 +1199,7 @@ class Campers2DGame {
       frenzyBanner: document.getElementById('frenzy-banner'),
       boostBanner: document.getElementById('boost-banner'),
       stackBadge: document.getElementById('stack-badge'),
+      goalToastsContainer: document.getElementById('goal-toasts-container'),
       upgradesDrawer: document.getElementById('upgrades-drawer'),
       drawerTitle: document.getElementById('drawer-title'),
       btnCloseDrawer: document.getElementById('btn-close-drawer'),
@@ -1613,6 +1308,12 @@ class Campers2DGame {
     this.ui.hudGemsPill?.addEventListener('click', () => openDrawerTab('shop'));
     this.ui.hudVaultPill?.addEventListener('click', () => openDrawerTab('franchise'));
     this.ui.btnOpenGoals?.addEventListener('click', () => openDrawerTab('goals'));
+    this.ui.goalToastsContainer?.addEventListener('click', (e) => {
+      const toast = e.target.closest('.goal-toast');
+      if (toast && toast.dataset.achId) {
+        this.hud?.claimGoalToast(toast.dataset.achId);
+      }
+    });
 
     // Main Menu Listeners
     this.ui.btnOpenMainMenu?.addEventListener('click', () => this.openMainMenu());
@@ -1828,204 +1529,13 @@ class Campers2DGame {
     this.renderDrawerContent();
   }
 
-  // --- MAIN MENU HUB SYSTEM ---
-  openMainMenu() {
-    this.isMainMenuOpen = true;
-    this.selectedMenuRegion = this.state.region || 1;
-    if (this.ui?.upgradesDrawer) this.ui.upgradesDrawer.classList.remove('open');
-    if (this.ui?.worldModal) this.ui.worldModal.style.display = 'none';
-    if (this.ui?.crateModal) this.ui.crateModal.style.display = 'none';
-    if (this.ui?.eventsModal) this.ui.eventsModal.style.display = 'none';
-    if (this.ui?.mainMenu) {
-      this.ui.mainMenu.style.display = 'flex';
-      this.updateMainMenuCurrencies();
-      this.renderRegionTrail();
-    }
-  }
-
-  closeMainMenu() {
-    this.isMainMenuOpen = false;
-    if (this.ui?.mainMenu) {
-      this.ui.mainMenu.style.display = 'none';
-    }
-    window.soundFX?.playPop();
-  }
-
-  toggleMainMenu() {
-    if (this.isMainMenuOpen) {
-      this.closeMainMenu();
-    } else {
-      this.openMainMenu();
-    }
-  }
-
-  updateMainMenuCurrencies() {
-    if (!this.ui?.mainMenu || !this.isMainMenuOpen) return;
-    const otherRate = this.getTotalOtherCampsIdleRate();
-
-    if (this.ui.menuCash) this.ui.menuCash.textContent = `$${Math.floor(this.state.cash || 0).toLocaleString()}`;
-    if (this.ui.menuVault) this.ui.menuVault.textContent = `$${Math.floor(this.state.empireGold || 0).toLocaleString()}`;
-    if (this.ui.menuGems) this.ui.menuGems.textContent = Math.floor(this.state.gems || 0).toLocaleString();
-    if (this.ui.menuIdleRate) {
-      if (this.ui.menuEmpireIdle) this.ui.menuEmpireIdle.style.display = otherRate > 0 ? 'flex' : 'none';
-      this.ui.menuIdleRate.textContent = `+$${otherRate.toFixed(1)}/s`;
-    }
-
-    if (this.ui.menuCrateSub) {
-      const freeTimer = this.state.crates?.freeTimer || 0;
-      if (freeTimer <= 0) {
-        this.ui.menuCrateSub.textContent = 'Kiste bereit! 🎁';
-        this.ui.menuCrateSub.style.color = '#27ae60';
-        this.ui.menuCrateSub.style.fontWeight = 'bold';
-      } else {
-        const m = Math.floor(freeTimer / 60);
-        const s = Math.floor(freeTimer % 60);
-        this.ui.menuCrateSub.textContent = `Gratis in ${m}:${s < 10 ? '0' : ''}${s}`;
-        this.ui.menuCrateSub.style.color = '#5d6d7e';
-        this.ui.menuCrateSub.style.fontWeight = 'normal';
-      }
-    }
-  }
-
-  updateMainMenuContent() {
-    if (!this.ui?.mainMenu) return;
-    this.updateMainMenuCurrencies();
-    this.renderRegionTrail();
-  }
-
-  renderRegionTrail() {
-    if (!this.ui?.regionTrailList) return;
-
-    const curWorld = this.state.world || 1;
-    const curRegion = this.state.region || 1;
-    const curCamp = this.state.camp || 1;
-    const maxWorld = this.state.maxUnlockedWorld || 1;
-    const maxRegion = this.state.maxUnlockedRegion || 1;
-    const maxCamp = this.state.maxUnlockedCamp || 1;
-
-    if (!this.selectedMenuRegion) {
-      this.selectedMenuRegion = curRegion;
-    }
-    // Clamp within unlocked bounds
-    this.selectedMenuRegion = Math.max(1, Math.min(this.selectedMenuRegion, maxRegion));
-    const selReg = this.selectedMenuRegion;
-
-    // Region nav buttons
-    if (this.ui.btnPrevRegion) {
-      this.ui.btnPrevRegion.disabled = (selReg <= 1);
-    }
-    if (this.ui.btnNextRegion) {
-      this.ui.btnNextRegion.disabled = (selReg >= maxRegion);
-    }
-
-    // Biome info for this region
-    const biomeIdx = Math.floor((selReg - 1) / 2) % WORLD_BIOMES.length;
-    const biome = WORLD_BIOMES[biomeIdx] || WORLD_BIOMES[0];
-
-    if (this.ui.trailRegionTitle) {
-      this.ui.trailRegionTitle.textContent = `REGION ${selReg}: ${biome.name.toUpperCase()}`;
-    }
-    if (this.ui.trailWorldSubtitle) {
-      const isViewingActive = (selReg === curRegion);
-      this.ui.trailWorldSubtitle.innerHTML = `Welt ${curWorld} • ${biome.theme}${!isViewingActive ? `<br><button id="btn-jump-active-camp" style="margin-top: 5px; background: #27ae60; color: #fff; border: 1px solid #142819; border-radius: 4px; font-size: 9px; padding: 3px 8px; cursor: pointer; font-family: monospace;">📍 Zurück zu aktiver Region ${curRegion}</button>` : ''}`;
-    }
-
-    // Calculate progression along this region's 10 campsites
-    let clearedCount = 0;
-    for (let c = 1; c <= 10; c++) {
-      const isCleared = (curWorld < maxWorld) ||
-                        (curWorld === maxWorld && selReg < maxRegion) ||
-                        (curWorld === maxWorld && selReg === maxRegion && c < maxCamp) ||
-                        (this.state.camps?.[getCampKey(curWorld, selReg, c)]?.idleRate > 0);
-      if (isCleared) clearedCount++;
-    }
-
-    const progressPct = Math.round((clearedCount / 10) * 100);
-    if (this.ui.trailProgressFill) {
-      this.ui.trailProgressFill.style.width = `${Math.max(8, progressPct)}%`;
-    }
-    if (this.ui.trailProgressText) {
-      this.ui.trailProgressText.textContent = `${clearedCount} / 10 Camps abgeschlossen`;
-    }
-
-    // Generate 10 trail nodes
-    let html = '';
-    for (let c = 1; c <= 10; c++) {
-      const cfg = getCampSizeInfo(c);
-      const isCurrent = (curWorld === this.state.world && selReg === curRegion && c === curCamp);
-      const isUnlocked = isCurrent ||
-                         (curWorld < maxWorld) ||
-                         (curWorld === maxWorld && selReg < maxRegion) ||
-                         (curWorld === maxWorld && selReg === maxRegion && c <= maxCamp);
-      const cKey = getCampKey(curWorld, selReg, c);
-      const cData = this.state.camps?.[cKey];
-      const isCleared = !isCurrent && (
-                        (curWorld < maxWorld) ||
-                        (curWorld === maxWorld && selReg < maxRegion) ||
-                        (curWorld === maxWorld && selReg === maxRegion && c < maxCamp) ||
-                        (cData && cData.idleRate > 0)
-      );
-
-      // Node state class
-      const nodeClass = isCurrent
-        ? 'trail-node active-node'
-        : isCleared
-          ? 'trail-node cleared-node'
-          : isUnlocked
-            ? 'trail-node'
-            : 'trail-node locked-node';
-
-      // Icon & visual cues
-      const icon = isCurrent ? '🏕️' : isCleared ? '🏰' : isUnlocked ? '⛺' : '🔒';
-
-      // Status text
-      let statusHtml = '';
-      if (isCurrent) {
-        statusHtml = '<span class="trail-node-status" style="color: #27ae60;">⭐ JETZT AKTIV</span>';
-      } else if (isCleared) {
-        const idleVal = cData?.idleRate || 0;
-        if (idleVal > 0) {
-          statusHtml = `<span class="trail-node-status" style="color: #b7950b;">🏛️ +$${idleVal.toFixed(1)}/s Tresor-Gold</span>`;
-        } else {
-          statusHtml = '<span class="trail-node-status" style="color: #27ae60;">✓ Abgeschlossen & Automatisiert</span>';
-        }
-      } else if (isUnlocked) {
-        statusHtml = '<span class="trail-node-status" style="color: #2980b9;">⚡ Bereit zur Erkundung</span>';
-      } else {
-        statusHtml = `<span class="trail-node-status" style="color: #95a5a6;">🔒 Schließe Camp #${c - 1} ab</span>`;
-      }
-
-      // Button
-      let btnHtml = '';
-      if (isCurrent) {
-        btnHtml = `<button class="btn-trail-go current-play" data-play-camp="${c}">▶️ SPIELEN</button>`;
-      } else if (isUnlocked) {
-        btnHtml = `<button class="btn-trail-go visit" data-play-camp="${c}">BESUCHEN ✈️</button>`;
-      } else {
-        btnHtml = `<button class="btn-trail-go" disabled>GESPERRT</button>`;
-      }
-
-      html += `
-        <div class="${nodeClass}" data-camp-num="${c}">
-          <div class="trail-node-icon">${icon}</div>
-          <div class="trail-node-info">
-            <div class="trail-node-name">
-              <span>Camp #${c}: ${cfg.name}</span>
-            </div>
-            <div class="trail-node-meta">
-              ${cfg.tier} • Bis zu ${cfg.pitches} Stellplätze
-            </div>
-            ${statusHtml}
-          </div>
-          <div>
-            ${btnHtml}
-          </div>
-        </div>
-      `;
-    }
-
-    this.ui.regionTrailList.innerHTML = html;
-  }
+  // --- MAIN MENU HUB SYSTEM (Delegated to MainMenuUI) ---
+  openMainMenu() { this.mainMenuUI.open(); }
+  closeMainMenu() { this.mainMenuUI.close(); }
+  toggleMainMenu() { this.mainMenuUI.toggle(); }
+  updateMainMenuCurrencies() { this.mainMenuUI.updateCurrencies(); }
+  updateMainMenuContent() { this.mainMenuUI.updateCurrencies(); this.mainMenuUI.renderRegionTrail(); }
+  renderRegionTrail() { this.mainMenuUI.renderRegionTrail(); }
 
   // --- SONDEREVENTS SYSTEM ---
   addEventPoints(amount = 1) {
@@ -2042,100 +1552,10 @@ class Campers2DGame {
     }
   }
 
-  openEventsModal() {
-    if (!this.ui?.eventsModal) return;
-    this.ui.eventsModal.style.display = 'flex';
-    this.renderEventsModal();
-  }
-
-  closeEventsModal() {
-    if (this.ui?.eventsModal) {
-      this.ui.eventsModal.style.display = 'none';
-    }
-  }
-
-  renderEventsModal() {
-    if (!this.ui?.eventsModal) return;
-    const progress = this.state.eventProgress || { points: 0, claimed: {} };
-    const curPts = progress.points || 0;
-    const maxMilestonePts = 150;
-
-    if (this.ui.eventPointsText) {
-      this.ui.eventPointsText.textContent = `🔥 ${curPts} / ${maxMilestonePts} Punkte`;
-    }
-    if (this.ui.eventPointsFill) {
-      const pct = Math.min(100, Math.round((curPts / maxMilestonePts) * 100));
-      this.ui.eventPointsFill.style.width = `${pct}%`;
-    }
-
-    if (this.ui.eventMilestonesList) {
-      let html = '';
-      CURRENT_EVENT_DEF.milestones.forEach((m, idx) => {
-        const isClaimed = !!progress.claimed?.[m.id];
-        const canClaim = !isClaimed && curPts >= m.points;
-
-        html += `
-          <div style="background: white; border: 2px solid ${canClaim ? '#27ae60' : isClaimed ? '#bdc3c7' : '#142819'}; border-radius: 8px; padding: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; box-shadow: 0 2px 0 #142819; ${isClaimed ? 'opacity: 0.65;' : ''}">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <div style="font-size: 24px;">${idx === 3 ? '👑' : idx === 2 ? '🏛️' : idx === 1 ? '📦' : '💎'}</div>
-              <div>
-                <div style="font-size: 12px; font-weight: bold; color: #142819;">${m.title}</div>
-                <div style="font-size: 11px; color: #27ae60; font-weight: bold;">${m.rewardText}</div>
-                <div style="font-size: 9px; color: #7f8c8d;">Benötigt: ${m.points} Festival-Punkte</div>
-              </div>
-            </div>
-            <div>
-              ${isClaimed
-                ? `<button class="btn-manager-action maxed" disabled style="font-size: 11px; padding: 6px 10px;">✅ Eingelöst</button>`
-                : canClaim
-                  ? `<button class="btn-manager-action ready-pulse" data-claim-milestone="${m.id}" style="font-size: 11px; padding: 6px 12px; background: #2ecc71; color: white;">🎁 Abholen</button>`
-                  : `<button class="btn-manager-action" disabled style="font-size: 10px; padding: 6px 10px; background: #eaeded; color: #7f8c8d;">🔒 ${curPts}/${m.points}</button>`
-              }
-            </div>
-          </div>
-        `;
-      });
-      this.ui.eventMilestonesList.innerHTML = html;
-    }
-  }
-
-  claimEventMilestone(milestoneId) {
-    if (!this.state.eventProgress) return;
-    const progress = this.state.eventProgress;
-    if (progress.claimed?.[milestoneId]) return;
-
-    const m = CURRENT_EVENT_DEF.milestones.find(item => item.id === milestoneId);
-    if (!m) return;
-    if ((progress.points || 0) < m.points) return;
-
-    if (!progress.claimed) progress.claimed = {};
-    progress.claimed[milestoneId] = true;
-
-    // Grant reward
-    if (m.type === 'gems') {
-      this.addGems(m.amount);
-      this.showFloatText(this.player.x, this.player.y - 18, `💎 +${m.amount} Gems!`, '#3498db');
-    } else if (m.type === 'crate') {
-      if (!this.state.crates[m.crateId]) this.state.crates[m.crateId] = { count: 0 };
-      this.state.crates[m.crateId].count = (this.state.crates[m.crateId].count || 0) + 1;
-      this.showFloatText(this.player.x, this.player.y - 18, `📦 +1 Goldene Kiste!`, '#f39c12');
-    } else if (m.type === 'vault_boost') {
-      this.addEmpireGold(m.gold);
-      this.buyIncomeBoost(m.boostSeconds, 2.0, 0);
-      this.showFloatText(this.player.x, this.player.y - 18, `🏛️ +$${m.gold} Gold & ⚡ Boost!`, '#ffd700');
-    } else if (m.type === 'emperor_pack') {
-      if (!this.state.crates[m.crateId]) this.state.crates[m.crateId] = { count: 0 };
-      this.state.crates[m.crateId].count = (this.state.crates[m.crateId].count || 0) + 1;
-      this.addGems(m.gems);
-      this.showFloatText(this.player.x, this.player.y - 18, `👑 Kaiser-Kiste & +${m.gems} Gems!`, '#9b59b6');
-    }
-
-    window.soundFX?.playFanfare();
-    this.updateHUD();
-    this.updateBadges();
-    this.renderEventsModal();
-    this.saveState();
-  }
+  openEventsModal() { this.modalsUI.openEventsModal(); }
+  closeEventsModal() { this.modalsUI.closeEventsModal(); }
+  renderEventsModal() { this.modalsUI.renderEventsModal(); }
+  claimEventMilestone(id) { this.modalsUI.claimEventMilestone(id); }
 
   addCash(amount, isRaw = false) {
     const globalMult = 1.0 + (this.state.franchiseUpgrades?.globalIncomeLevel || 0) * 0.15;
@@ -2146,8 +1566,56 @@ class Campers2DGame {
     this.state.cash += finalAmount;
     if (!this.state.stats) this.state.stats = {};
     this.state.stats.totalCashEarned = (this.state.stats.totalCashEarned || 0) + finalAmount;
+
+    // Check if enough cash to end staff strike
+    if (this.staffOnStrike) {
+      const totalWageRate = getTotalStaffWage(this.state.managers);
+      const minPayroll = Math.max(5, Math.round(totalWageRate * 2.5));
+      if (this.state.cash >= minPayroll) {
+        this.processStaffPayroll(2.5);
+      }
+    }
+
     this.updateHUD();
     this.updateBadges();
+  }
+
+  processStaffPayroll(seconds = 5.0) {
+    const totalWageRate = getTotalStaffWage(this.state.managers);
+    if (totalWageRate <= 0) {
+      this.staffOnStrike = false;
+      return;
+    }
+    const payrollCost = Math.round(totalWageRate * seconds);
+
+    if (this.state.cash >= payrollCost) {
+      this.state.cash -= payrollCost;
+      const wasOnStrike = this.staffOnStrike;
+      this.staffOnStrike = false;
+      if (!this.state.stats) this.state.stats = {};
+      this.state.stats.totalWagesPaid = (this.state.stats.totalWagesPaid || 0) + payrollCost;
+      this.updateHUD();
+
+      if (wasOnStrike) {
+        this.showFloatText(this.player.x, this.player.y - 18, `✅ Gehälter bezahlt (-$${payrollCost})!`, '#2ecc71');
+        window.soundFX?.playCoin();
+      } else {
+        this.showFloatText(this.player.x, this.player.y - 18, `🧾 Gehälter: -$${payrollCost}`, '#e74c3c');
+      }
+
+      if (this.ui?.upgradesDrawer?.classList.contains('open') && this.activeMainTab === 'managers') {
+        this.renderDrawerContent();
+      }
+    } else {
+      // Insufficient cash: staff pauses work until paid, but player savings are protected!
+      this.staffOnStrike = true;
+      this.showFloatText(this.player.x, this.player.y - 18, `⚠️ Lohnrückstand ($${payrollCost})! Personal pausiert!`, '#e74c3c');
+      window.soundFX?.playThud();
+
+      if (this.ui?.upgradesDrawer?.classList.contains('open') && this.activeMainTab === 'managers') {
+        this.renderDrawerContent();
+      }
+    }
   }
 
   addEmpireGold(amount) {
@@ -2191,97 +1659,9 @@ class Campers2DGame {
     return calculateCampActiveRate(this.getCurrentCampData());
   }
 
-  buyTimeSkip(seconds, costGems, label = 'Time Warp') {
-    if ((this.state.gems || 0) < costGems) {
-      this.showFloatText(this.player.x, this.player.y - 15, '💎 Not enough Gems!', '#e74c3c');
-      window.soundFX?.playThud();
-      return;
-    }
-    this.state.gems -= costGems;
-
-    const activeRate = Math.max(3.0, this.getCurrentCampActiveRate());
-    const empireRate = this.getTotalOtherCampsIdleRate();
-    const effMult = (this.state.boostTimer > 0 && this.state.boostMultiplier > 1.0) ? this.state.boostMultiplier : 1.0;
-    const globalMult = 1.0 + (this.state.franchiseUpgrades?.globalIncomeLevel || 0) * 0.15;
-
-    const activePayout = Math.round(activeRate * effMult * globalMult * seconds);
-    const empirePayout = Math.round(empireRate * effMult * globalMult * seconds);
-
-    this.addCash(activePayout, true);
-    if (empirePayout > 0) {
-      this.addEmpireGold(empirePayout);
-    }
-    window.soundFX?.playFanfare();
-
-    const vaultMsg = empirePayout > 0 ? ` & +$${empirePayout.toLocaleString()} 🏛️` : '';
-    this.showFloatText(this.player.x, this.player.y - 20, `⏱️ ${label}: +$${activePayout.toLocaleString()} 💵${vaultMsg}!`, '#f1c40f');
-    for (let p = 0; p < 8; p++) {
-      this.particles.push({
-        x: this.player.x + (Math.random() - 0.5) * 20,
-        y: this.player.y - 10 + (Math.random() - 0.5) * 20,
-        vx: (Math.random() - 0.5) * 25,
-        vy: -20 - Math.random() * 20,
-        size: 2.5,
-        life: 0.8,
-        color: '#f1c40f'
-      });
-    }
-    this.updateHUD();
-    this.renderDrawerContent();
-    this.saveState();
-  }
-
-  buyIncomeBoost(durationSeconds, multiplier, costGems) {
-    if ((this.state.gems || 0) < costGems) {
-      this.showFloatText(this.player.x, this.player.y - 15, '💎 Not enough Gems!', '#e74c3c');
-      window.soundFX?.playThud();
-      return;
-    }
-    this.state.gems -= costGems;
-
-    this.state.boostTimer = (this.state.boostTimer || 0) + durationSeconds;
-    this.state.boostMultiplier = Math.max(this.state.boostMultiplier || 1.0, multiplier);
-
-    window.soundFX?.playFanfare();
-    this.showFloatText(this.player.x, this.player.y - 20, `⚡ ${multiplier}x Boost Active!`, '#9b59b6');
-    for (let p = 0; p < 8; p++) {
-      this.particles.push({
-        x: this.player.x + (Math.random() - 0.5) * 20,
-        y: this.player.y - 10 + (Math.random() - 0.5) * 20,
-        vx: (Math.random() - 0.5) * 25,
-        vy: -20 - Math.random() * 20,
-        size: 2.5,
-        color: '#9b59b6',
-        life: 0.8
-      });
-    }
-
-    this.updateHUD();
-    this.renderDrawerContent();
-    this.saveState();
-  }
-
-  buyIAPGems(gemAmount, priceStr, tierName = 'Gem Pack') {
-    this.addGems(gemAmount);
-    window.soundFX?.playFanfare();
-    this.showFloatText(this.player.x, this.player.y - 20, `💎 +${gemAmount.toLocaleString()} Gems (${priceStr})!`, '#2980b9');
-    for (let p = 0; p < 12; p++) {
-      this.particles.push({
-        x: this.player.x + (Math.random() - 0.5) * 24,
-        y: this.player.y - 10 + (Math.random() - 0.5) * 24,
-        vx: (Math.random() - 0.5) * 30,
-        vy: -25 - Math.random() * 25,
-        size: 3,
-        color: '#3498db',
-        life: 1.0
-      });
-    }
-
-    this.updateHUD();
-    this.renderDrawerContent();
-    this.saveState();
-  }
-
+  buyTimeSkip(sec, cost, label) { this.economy.buyTimeSkip(sec, cost, label); }
+  buyIncomeBoost(dur, mult, cost) { this.economy.buyIncomeBoost(dur, mult, cost); }
+  buyIAPGems(amt, price, tier) { this.economy.buyIAPGems(amt, price, tier); }
   hireOrUpgradeWorker(id) {
     if (id === 'ranger_speed' || id === 'ranger_cap') {
       this.buyRangerUpgrade(id);
@@ -2289,133 +1669,7 @@ class Campers2DGame {
       this.activateOrUpgradeManager(id);
     }
   }
-
-  buyFranchiseUpgrade(id) {
-    if (!this.state.franchiseUpgrades) {
-      this.state.franchiseUpgrades = {
-        speedLevel: this.state.upgrades?.speedLevel || 1,
-        capacityLevel: this.state.upgrades?.capacityLevel || 1,
-        investSpeedLevel: 1,
-        globalIncomeLevel: 0,
-        seedCapitalLevel: 0,
-        staffSpeedLevel: 0
-      };
-    }
-    const upg = this.state.franchiseUpgrades;
-
-    if (id === 'ranger_speed') {
-      const curLvl = upg.speedLevel || 1;
-      if (curLvl >= 10) return;
-      const cost = Math.round(40 * Math.pow(1.65, curLvl - 1));
-      if (!this.spendEmpireGold(cost)) {
-        this.showFloatText(this.player.x, this.player.y - 12, '🏛️ Not enough Empire Gold!', '#e74c3c');
-        window.soundFX?.playThud();
-        return;
-      }
-      upg.speedLevel++;
-      this.state.upgrades.speedLevel = upg.speedLevel;
-      this.state.rangerSpeed = 92 + (upg.speedLevel - 1) * 16;
-      window.soundFX?.playBuild();
-      this.showFloatText(this.player.x, this.player.y - 12, `👟 Speed Up! (${this.state.rangerSpeed}px/s)`, '#2ecc71');
-      this.updateHUD();
-      this.renderDrawerContent();
-      this.saveState();
-      return;
-    }
-
-    if (id === 'ranger_cap') {
-      const curLvl = upg.capacityLevel || 1;
-      if (curLvl >= 10) return;
-      const cost = Math.round(50 * Math.pow(1.70, curLvl - 1));
-      if (!this.spendEmpireGold(cost)) {
-        this.showFloatText(this.player.x, this.player.y - 12, '🏛️ Not enough Empire Gold!', '#e74c3c');
-        window.soundFX?.playThud();
-        return;
-      }
-      upg.capacityLevel++;
-      this.state.upgrades.capacityLevel = upg.capacityLevel;
-      this.state.rangerCapacity = 4 + (upg.capacityLevel - 1) * 2;
-      window.soundFX?.playBuild();
-      this.showFloatText(this.player.x, this.player.y - 12, `🎒 +2 Backpack Cargo! (${this.state.rangerCapacity})`, '#2ecc71');
-      this.updateHUD();
-      this.renderDrawerContent();
-      this.saveState();
-      return;
-    }
-
-    if (id === 'invest_speed') {
-      const curLvl = upg.investSpeedLevel || 1;
-      if (curLvl >= 10) return;
-      const cost = Math.round(45 * Math.pow(1.65, curLvl - 1));
-      if (!this.spendEmpireGold(cost)) {
-        this.showFloatText(this.player.x, this.player.y - 12, '🏛️ Not enough Empire Gold!', '#e74c3c');
-        window.soundFX?.playThud();
-        return;
-      }
-      upg.investSpeedLevel = curLvl + 1;
-      window.soundFX?.playBuild();
-      this.showFloatText(this.player.x, this.player.y - 12, `💸 Spend Speed Up! (Lvl ${upg.investSpeedLevel})`, '#2ecc71');
-      this.updateHUD();
-      this.renderDrawerContent();
-      this.saveState();
-      return;
-    }
-
-    if (id === 'global_income') {
-      const curLvl = upg.globalIncomeLevel || 0;
-      if (curLvl >= 10) return;
-      const cost = Math.round(80 * Math.pow(1.85, curLvl));
-      if (!this.spendEmpireGold(cost)) {
-        this.showFloatText(this.player.x, this.player.y - 12, '🏛️ Not enough Empire Gold!', '#e74c3c');
-        window.soundFX?.playThud();
-        return;
-      }
-      upg.globalIncomeLevel = curLvl + 1;
-      window.soundFX?.playBuild();
-      this.showFloatText(this.player.x, this.player.y - 12, `📈 +15% Global Revenue! (+${upg.globalIncomeLevel * 15}%)`, '#f1c40f');
-      this.updateHUD();
-      this.renderDrawerContent();
-      this.saveState();
-      return;
-    }
-
-    if (id === 'seed_capital') {
-      const curLvl = upg.seedCapitalLevel || 0;
-      if (curLvl >= 10) return;
-      const cost = Math.round(60 * Math.pow(1.75, curLvl));
-      if (!this.spendEmpireGold(cost)) {
-        this.showFloatText(this.player.x, this.player.y - 12, '🏛️ Not enough Empire Gold!', '#e74c3c');
-        window.soundFX?.playThud();
-        return;
-      }
-      upg.seedCapitalLevel = curLvl + 1;
-      window.soundFX?.playBuild();
-      this.showFloatText(this.player.x, this.player.y - 12, `🪙 Seed Capital +$100! (+$${upg.seedCapitalLevel * 100})`, '#f1c40f');
-      this.updateHUD();
-      this.renderDrawerContent();
-      this.saveState();
-      return;
-    }
-
-    if (id === 'staff_speed') {
-      const curLvl = upg.staffSpeedLevel || 0;
-      if (curLvl >= 10) return;
-      const cost = Math.round(55 * Math.pow(1.75, curLvl));
-      if (!this.spendEmpireGold(cost)) {
-        this.showFloatText(this.player.x, this.player.y - 12, '🏛️ Not enough Empire Gold!', '#e74c3c');
-        window.soundFX?.playThud();
-        return;
-      }
-      upg.staffSpeedLevel = curLvl + 1;
-      window.soundFX?.playBuild();
-      this.showFloatText(this.player.x, this.player.y - 12, `🧹 Cleaners Speed +15%! (+${upg.staffSpeedLevel * 15}%)`, '#2ecc71');
-      this.updateHUD();
-      this.renderDrawerContent();
-      this.saveState();
-      return;
-    }
-  }
-
+  buyFranchiseUpgrade(id) { this.economy.buyFranchiseUpgrade(id); }
   buyRangerUpgrade(id) {
     this.buyFranchiseUpgrade(id);
   }
@@ -2444,11 +1698,35 @@ class Campers2DGame {
     }
   }
 
+  getItemPitchTier(item) {
+    if (item.pitchTier) return item.pitchTier;
+    if (item.pitchId) {
+      const p = this.pitches.find(pitch => pitch.id === item.pitchId);
+      if (p) return p.tier;
+    }
+    // Find closest pitch to item
+    let closestPitch = null;
+    let minDist = Infinity;
+    for (let i = 0; i < this.pitches.length; i++) {
+      const p = this.pitches[i];
+      const px = p.dropX ?? p.x;
+      const py = p.dropY ?? p.y;
+      const d = Math.hypot(px - item.x, py - item.y);
+      if (d < minDist) {
+        minDist = d;
+        closestPitch = p;
+      }
+    }
+    return closestPitch ? closestPitch.tier : 'tent';
+  }
+
   spawnWorkerEntity(id) {
     const def = MANAGER_DEFS[id];
     if (!def) return;
     if (this.workers[id]) return;
     if (id === 'bella' && !this.hasKiosk) return;
+    if (id === 'oliver' && !this.pitches.some(p => p.tier === 'tent')) return;
+    if (id === 'chloe' && !this.pitches.some(p => p.tier === 'caravan')) return;
     if (id === 'felix' && !this.pitches.some(p => p.tier === 'glamping' || p.tier === 'cabin' || p.tier === 'chalet' || p.tier === 'lodge' || p.tier === 'villa')) return;
 
     const pos = this.getWorkerDefaultPos(id);
@@ -2524,163 +1802,10 @@ class Campers2DGame {
     this.saveState();
   }
 
-  generateCrateLoot(crateId) {
-    const def = CRATE_DEFS[crateId] || CRATE_DEFS.free;
-    const totalCards = Math.floor(Math.random() * (def.maxCards - def.minCards + 1)) + def.minCards;
-    const cashBonus = Math.floor(Math.random() * (def.maxCash - def.minCash + 1)) + def.minCash;
-
-    const commonPool = ['alex', 'oliver', 'bella'];
-    const rarePool = ['sam', 'chloe', 'finn'];
-    const epicPool = ['felix', 'robin'];
-
-    const chosenCards = {};
-    let cardsLeft = totalCards;
-
-    if (def.guaranteedEpic) {
-      const epicCount = (crateId === 'emperor') ? 6 : (crateId === 'mythic') ? 2 : 1;
-      for (let e = 0; e < epicCount; e++) {
-        if (cardsLeft <= 0) break;
-        const epicId = epicPool[Math.floor(Math.random() * epicPool.length)];
-        const count = Math.min(cardsLeft, (crateId === 'emperor') ? 2 : 1);
-        chosenCards[epicId] = (chosenCards[epicId] || 0) + count;
-        cardsLeft -= count;
-      }
-    }
-
-    if (def.guaranteedRare && cardsLeft > 0) {
-      const rareCount = (crateId === 'emperor') ? 10 : (crateId === 'mythic') ? 4 : 1;
-      for (let r = 0; r < rareCount; r++) {
-        if (cardsLeft <= 0) break;
-        const rareId = rarePool[Math.floor(Math.random() * rarePool.length)];
-        const count = Math.min(cardsLeft, (crateId === 'emperor') ? 2 : 1);
-        chosenCards[rareId] = (chosenCards[rareId] || 0) + count;
-        cardsLeft -= count;
-      }
-    }
-
-    while (cardsLeft > 0) {
-      const rand = Math.random();
-      let pool = commonPool;
-      if (rand < 0.15) pool = epicPool;
-      else if (rand < 0.45) pool = rarePool;
-
-      const id = pool[Math.floor(Math.random() * pool.length)];
-      chosenCards[id] = (chosenCards[id] || 0) + 1;
-      cardsLeft--;
-    }
-
-    return {
-      crateName: def.name,
-      cards: chosenCards,
-      cash: cashBonus
-    };
-  }
-
-  openCrate(crateId) {
-    const def = CRATE_DEFS[crateId];
-    if (!def) return;
-
-    if (def.currency === 'gems') {
-      if ((this.state.gems || 0) < def.cost) {
-        this.showFloatText(this.player.x, this.player.y - 15, '💎 Not enough Gems!', '#e74c3c');
-        window.soundFX?.playThud();
-        return;
-      }
-      this.state.gems -= def.cost;
-    } else if (crateId === 'free') {
-      if (this.state.crates.freeTimer > 0) return;
-      this.state.crates.freeTimer = def.cooldown;
-    } else {
-      if (this.state.cash < def.cost) {
-        this.showFloatText(this.player.x, this.player.y - 15, '💵 Not enough Cash!', '#e74c3c');
-        window.soundFX?.playThud();
-        return;
-      }
-      this.state.cash -= def.cost;
-    }
-
-    this.pendingLoot = this.generateCrateLoot(crateId);
-
-    // Setup unboxing modal
-    if (this.ui.crateModal) {
-      this.ui.crateModalTitle.textContent = `${def.icon || '🎁'} ${def.name.toUpperCase()}`;
-      if (this.ui.crateEmojiBounce) this.ui.crateEmojiBounce.textContent = def.icon || '📦';
-      this.ui.crateBoxStage.style.display = 'flex';
-      this.ui.crateInstruction.textContent = 'TAP CRATE TO UNBOX!';
-      this.ui.crateRewardsContainer.style.display = 'none';
-      this.ui.btnCollectLoot.style.display = 'none';
-      this.ui.crateModal.style.display = 'flex';
-    }
-
-    this.updateHUD();
-    this.renderDrawerContent();
-    this.updateBadges();
-    this.saveState();
-  }
-
-  revealCrateLoot() {
-    if (!this.pendingLoot) return;
-    window.soundFX?.playChestOpen();
-
-    this.ui.crateBoxStage.style.display = 'none';
-    this.ui.crateRewardsContainer.style.display = 'flex';
-    this.ui.btnCollectLoot.style.display = 'block';
-
-    // Build revealed card tiles
-    let html = '';
-    const cardEntries = Object.entries(this.pendingLoot.cards);
-    cardEntries.forEach(([id, count]) => {
-      const mDef = MANAGER_DEFS[id];
-      if (!mDef) return;
-      const curCards = this.state.managers[id]?.cards || 0;
-      const curLvl = this.state.managers[id]?.level || 0;
-      const reqCards = curLvl === 0 ? mDef.unlockCards : (mDef.levels[curLvl]?.cardsReq || 0);
-
-      html += `
-        <div class="revealed-card ${mDef.rarity}">
-          <div class="revealed-icon">${mDef.icon}</div>
-          <div class="revealed-name">${mDef.name}</div>
-          <div class="rarity-pill ${mDef.rarity}">${mDef.rarity}</div>
-          <div class="revealed-count">+${count} Cards</div>
-          <div class="revealed-meter">Has: ${curCards + count}${reqCards > 0 ? ` / ${reqCards}` : ''}</div>
-        </div>
-      `;
-    });
-
-    this.ui.rewardsCardsRow.innerHTML = html;
-    this.ui.rewardCashBanner.textContent = `💵 +$${this.pendingLoot.cash} Bonus Cash!`;
-
-    window.soundFX?.playCardFlip();
-    setTimeout(() => {
-      window.soundFX?.playFanfare();
-    }, 220);
-  }
-
-  collectPendingLoot() {
-    if (!this.pendingLoot) {
-      if (this.ui.crateModal) this.ui.crateModal.style.display = 'none';
-      return;
-    }
-
-    // Apply cards
-    Object.entries(this.pendingLoot.cards).forEach(([id, count]) => {
-      if (this.state.managers[id]) {
-        this.state.managers[id].cards = (this.state.managers[id].cards || 0) + count;
-      }
-    });
-
-    // Apply cash
-    this.addCash(this.pendingLoot.cash);
-    window.soundFX?.playCoin();
-
-    this.pendingLoot = null;
-    if (this.ui.crateModal) this.ui.crateModal.style.display = 'none';
-
-    this.updateHUD();
-    this.renderDrawerContent();
-    this.updateBadges();
-    this.saveState();
-  }
+  generateCrateLoot(id) { return this.economy.generateCrateLoot(id); }
+  openCrate(id) { this.modalsUI.openCrate(id); }
+  revealCrateLoot() { this.modalsUI.revealCrateLoot(); }
+  collectPendingLoot() { this.modalsUI.collectPendingLoot(); }
 
   getActiveAchievementDefs() {
     const w = this.state.world || 1;
@@ -2690,22 +1815,23 @@ class Campers2DGame {
   }
 
   checkCampgroundCompletion() {
+    if (!this.ui) return;
     const achDefs = this.getActiveAchievementDefs();
-    const allClaimed = achDefs.every(a => this.state.achievements[a.id]?.claimed);
+    const allClaimed = achDefs.length > 0 && achDefs.every(a => this.state.achievements?.[a.id]?.claimed);
 
     if (allClaimed) {
-      if (this.ui.campCompleteBanner) {
+      if (this.ui?.campCompleteBanner) {
         this.ui.campCompleteBanner.style.display = 'flex';
       }
-      if (this.ui.btnOpenWorld) {
+      if (this.ui?.btnOpenWorld) {
         this.ui.btnOpenWorld.classList.add('unlock-ready');
       }
       this.showFloatText(this.player.x, this.player.y - 24, '🚀 ALL GOALS COMPLETE! NEXT RESORT UNLOCKED!', '#f1c40f');
     } else {
-      if (this.ui.campCompleteBanner) {
+      if (this.ui?.campCompleteBanner) {
         this.ui.campCompleteBanner.style.display = 'none';
       }
-      if (this.ui.btnOpenWorld) {
+      if (this.ui?.btnOpenWorld) {
         this.ui.btnOpenWorld.classList.remove('unlock-ready');
       }
     }
@@ -2737,6 +1863,7 @@ class Campers2DGame {
       hasSportsField: !!this.hasSportsField,
       achievements: JSON.parse(JSON.stringify(this.state.achievements || {})),
       stats: JSON.parse(JSON.stringify(this.state.stats || {})),
+      buildingLevels: JSON.parse(JSON.stringify(this.state.buildingLevels || {})),
       pitchesBuilt: this.state.stats?.pitchesBuilt || 0,
       cash: this.state.cash,
       lastVisited: Date.now()
@@ -2769,6 +1896,7 @@ class Campers2DGame {
 
     // 1. Save active campsite state before switching
     this.saveCurrentCampData();
+    this.hud?.resetGoalToasts();
 
     // 2. Switch active coordinates
     this.state.world = targetWorld;
@@ -2790,10 +1918,11 @@ class Campers2DGame {
       this.hasGenerator = !!existing.hasGenerator;
       this.hasKiosk = !!existing.hasKiosk;
       this.hasSportsField = !!existing.hasSportsField;
+      this.state.buildingLevels = JSON.parse(JSON.stringify(existing.buildingLevels || { tent_1: 1, caravan_1: 1 }));
     } else {
       // Fresh new campsite: starts with base funds + franchise seed capital!
       const seedBonus = (this.state.franchiseUpgrades?.seedCapitalLevel || 0) * 100;
-      this.state.cash = 60 + seedBonus;
+      this.state.cash = 150 + seedBonus;
       this.state.managers = {
         alex: { level: 0, cards: 0 },
         sam: { level: 0, cards: 0 },
@@ -2821,6 +1950,7 @@ class Campers2DGame {
       this.hasGenerator = false;
       this.hasKiosk = false;
       this.hasSportsField = false;
+      this.state.buildingLevels = { tent_1: 1, caravan_1: 1 };
     }
 
     // 3. Clear active staff entities and re-init world for target camp
@@ -2939,1256 +2069,14 @@ class Campers2DGame {
     this.switchCamp(nextWorld, nextRegion, nextCamp);
   }
 
-  openWorldModal() {
-    if (!this.ui.worldModal) return;
-    const world = this.state.world || 1;
-    const region = this.state.region || 1;
-    const camp = this.state.camp || 1;
-    const maxWorld = this.state.maxUnlockedWorld || 1;
-    const maxRegion = this.state.maxUnlockedRegion || 1;
-    const maxCamp = this.state.maxUnlockedCamp || 1;
-    const biome = this.currentBiome || WORLD_BIOMES[0];
-    const achDefs = this.getActiveAchievementDefs();
-    const claimedCount = achDefs.filter(a => this.state.achievements[a.id]?.claimed).length;
-    const allDone = claimedCount >= achDefs.length;
+  openWorldModal() { this.modalsUI.openWorldModal(); }
 
-    // Total empire passive income from other camps
-    const empireIdleRate = this.getTotalOtherCampsIdleRate();
+  claimAchievement(id) { this.economy.claimAchievement(id); }
 
-    // Is the player currently visiting an older campsite?
-    const isVisitingOlderCamp = (world < maxWorld) || (world === maxWorld && region < maxRegion) || (world === maxWorld && region === maxRegion && camp < maxCamp);
+  renderDrawerContent(resetScroll = false) { this.drawerUI.render(resetScroll); }
 
-    if (this.ui.worldModalTitle) {
-      this.ui.worldModalTitle.textContent = `🌍 WORLD ${world} • REGION ${region}`;
-    }
-
-    if (this.ui.worldModalInfo) {
-      this.ui.worldModalInfo.innerHTML = `
-        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; color: #1b4329;">
-          <span>🌍 World ${world} / 100</span>
-          <span>📍 Region ${region} / 100</span>
-        </div>
-        <div style="font-size: 11px; color: #2980b9;">
-          Biome: <strong>${biome.name}</strong> (${biome.theme})
-        </div>
-        <div style="font-size: 11px; color: #444;">
-          Campsite Level: <strong>Camp #${camp} / 10</strong>
-          ${isVisitingOlderCamp ? ' <span style="color: #e67e22; font-weight: bold;">(Visiting Older Resort)</span>' : ''}
-        </div>
-        <div style="font-size: 11px; color: ${allDone ? '#27ae60' : '#8e44ad'}; font-weight: bold;">
-          Achievements: ${claimedCount} / ${achDefs.length} Claimed ${allDone ? '✓ (COMPLETED!)' : ''}
-        </div>
-        <div style="font-size: 11px; color: #b7950b; font-weight: bold; margin-top: 2px;">
-          ⚡ Empire Idle Revenue: +$${empireIdleRate.toFixed(1)}/sec
-        </div>
-      `;
-    }
-
-    if (this.ui.regionCampsGrid) {
-      let gridHtml = '';
-      for (let c = 1; c <= 10; c++) {
-        const isUnlocked = (world < maxWorld) ||
-                           (world === maxWorld && region < maxRegion) ||
-                           (world === maxWorld && region === maxRegion && c <= maxCamp);
-        const isCur = (c === camp);
-        const isCleared = c < maxCamp || (this.state.camps?.[getCampKey(world, region, c)]?.idleRate > 0);
-        gridHtml += `
-          <div class="camp-node ${isCleared ? 'cleared' : ''} ${isCur ? 'current' : ''}">
-            <span>${isCur ? '🏕️' : isCleared ? '✅' : isUnlocked ? '🔓' : '🔒'}</span>
-            <span>Camp ${c}</span>
-          </div>
-        `;
-      }
-      this.ui.regionCampsGrid.innerHTML = gridHtml;
-    }
-
-    if (this.ui.regionCampsList) {
-      let listHtml = '';
-      for (let c = 1; c <= 10; c++) {
-        const isUnlocked = (world < maxWorld) ||
-                           (world === maxWorld && region < maxRegion) ||
-                           (world === maxWorld && region === maxRegion && c <= maxCamp);
-        const isCur = (c === camp);
-        const cKey = getCampKey(world, region, c);
-        const cData = this.state.camps?.[cKey];
-        const isCleared = c < maxCamp || (cData && cData.idleRate > 0);
-
-        const mgrCount = isCur
-          ? Object.values(this.state.managers || {}).filter(m => m.level > 0).length
-          : (cData ? Object.values(cData.managers || {}).filter(m => m.level > 0).length : 0);
-
-        const idleVal = isCur ? 0 : (cData?.idleRate || 0);
-
-        listHtml += `
-          <div class="camp-item-card ${isCur ? 'active-resort' : ''}">
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-              <div style="font-weight: bold; font-size: 12px; color: #1b4329;">
-                ${isCur ? '🏕️' : isCleared ? '✅' : isUnlocked ? '🔓' : '🔒'} Camp #${c}
-                ${isCur ? '<span style="color: #27ae60; font-size: 10px; margin-left: 4px;">(ACTIVE)</span>' : ''}
-              </div>
-              <div style="font-size: 10px; color: #666;">
-                ${mgrCount > 0 ? `👔 ${mgrCount} Managers` : 'No managers yet'} • ${idleVal > 0 ? `<strong style="color: #b7950b;">+$${idleVal}/s Idle</strong>` : isCur ? 'Active Level' : 'Unexplored'}
-              </div>
-            </div>
-            <div>
-              ${isCur ? `
-                <button class="btn-camp-visit current" disabled>Current</button>
-              ` : isUnlocked ? `
-                <button class="btn-camp-visit" data-visit-camp="${c}" data-visit-region="${region}" data-visit-world="${world}">
-                  Visit ✈️
-                </button>
-              ` : `
-                <span style="font-size: 10px; color: #999;">Locked 🔒</span>
-              `}
-            </div>
-          </div>
-        `;
-      }
-      this.ui.regionCampsList.innerHTML = listHtml;
-    }
-
-    // Button to return to highest unlocked camp if visiting an older one
-    if (this.ui.btnReturnHighestCamp) {
-      if (isVisitingOlderCamp) {
-        this.ui.btnReturnHighestCamp.style.display = 'block';
-        this.ui.btnReturnHighestCamp.textContent = `🏕️ RETURN TO FRONTIER RESORT (Camp #${maxCamp})`;
-      } else {
-        this.ui.btnReturnHighestCamp.style.display = 'none';
-      }
-    }
-
-    if (this.ui.btnAdvanceCamp) {
-      this.ui.btnAdvanceCamp.style.display = (allDone && !isVisitingOlderCamp) ? 'block' : 'none';
-    }
-
-    this.ui.worldModal.style.display = 'flex';
-  }
-
-  claimAchievement(achId) {
-    const achDefs = this.getActiveAchievementDefs();
-    const ach = achDefs.find(a => a.id === achId);
-    if (!ach) return;
-
-    if (!this.state.achievements[achId]) {
-      this.state.achievements[achId] = { claimed: false };
-    }
-    if (this.state.achievements[achId].claimed) return;
-
-    const current = ach.getStat(this.state);
-    if (current < ach.goal) return;
-
-    this.state.achievements[achId].claimed = true;
-
-    // Grant rewards
-    if (ach.reward.cards) {
-      Object.entries(ach.reward.cards).forEach(([id, count]) => {
-        if (this.state.managers[id]) {
-          this.state.managers[id].cards = (this.state.managers[id].cards || 0) + count;
-        }
-      });
-    }
-    if (ach.reward.cash) {
-      this.addCash(ach.reward.cash);
-    }
-    if (ach.reward.gems) {
-      this.addGems(ach.reward.gems);
-    }
-
-    window.soundFX?.playFanfare();
-    const gemText = ach.reward.gems ? ` (+${ach.reward.gems} 💎)` : '';
-    this.showFloatText(this.player.x, this.player.y - 14, `🏆 ${ach.title} Claimed!${gemText}`, '#f1c40f');
-
-    // Check if ALL achievements of current campsite are completed
-    this.checkCampgroundCompletion();
-
-    this.updateHUD();
-    this.renderDrawerContent();
-    this.updateBadges();
-    this.saveState();
-  }
-
-  renderDrawerContent(resetScroll = false) {
-    if (!this.ui.drawerContentList) return;
-    const prevScroll = resetScroll ? 0 : (this.ui.drawerContentList.scrollTop || 0);
-
-    if (this.activeMainTab === 'managers') {
-      if (this.ui.managerSubTabs) this.ui.managerSubTabs.style.display = 'flex';
-      let html = '';
-
-      const list = Object.values(MANAGER_DEFS).filter(def => {
-        if (this.activeManagerFilter === 'all') return true;
-        return def.category === this.activeManagerFilter;
-      });
-
-      list.forEach(def => {
-        const stateObj = this.state.managers[def.id] || { level: 0, cards: 0 };
-        const curLvl = stateObj.level;
-        const curCards = stateObj.cards || 0;
-        const isMax = curLvl >= def.maxLevel;
-
-        let reqCards = 0;
-        let cost = 0;
-        let currentPerk = 'Status: Inactive (Locked)';
-        let nextPerk = 'Max level reached';
-
-        if (curLvl > 0) {
-          currentPerk = `Active: ${def.levels[curLvl - 1].desc}`;
-        }
-
-        if (!isMax) {
-          if (curLvl === 0) {
-            reqCards = def.unlockCards;
-            cost = def.levels[0].cost;
-            nextPerk = `Unlock: ${def.levels[0].desc}`;
-          } else {
-            const nextLvlConfig = def.levels[curLvl];
-            reqCards = nextLvlConfig.cardsReq;
-            cost = nextLvlConfig.cost;
-            nextPerk = `Next: ${nextLvlConfig.desc}`;
-          }
-        }
-
-        // Card progress bar
-        let cardMeterHtml = '';
-        if (isMax) {
-          cardMeterHtml = `
-            <div class="card-meter-bar">
-              <div class="card-meter-fill ready" style="width: 100%;"></div>
-              <div class="card-meter-text">⭐ FULL POWER</div>
-            </div>
-          `;
-        } else {
-          const pct = reqCards > 0 ? Math.min(100, Math.round((curCards / reqCards) * 100)) : 0;
-          const isReady = reqCards > 0 && curCards >= reqCards;
-          cardMeterHtml = `
-            <div class="card-meter-bar">
-              <div class="card-meter-fill ${isReady ? 'ready' : ''}" style="width: ${pct}%;"></div>
-              <div class="card-meter-text">${curCards} / ${reqCards} Cards</div>
-            </div>
-          `;
-        }
-
-        // Check prerequisite
-        const prereq = MANAGER_PREREQS[def.id];
-        const prereqMet = !prereq || prereq.isMet(this);
-
-        // Action button
-        let actionBtnHtml = '';
-        if (isMax) {
-          actionBtnHtml = `<button class="btn-manager-action maxed" disabled>⭐ MAX</button>`;
-        } else if (curLvl === 0) {
-          if (!prereqMet) {
-            actionBtnHtml = `<button class="btn-manager-action locked" disabled>🔒 Locked</button>`;
-          } else {
-            const hasCards = curCards >= reqCards;
-            const hasCash = this.state.cash >= cost;
-            if (hasCards && hasCash) {
-              actionBtnHtml = `<button class="btn-manager-action activate ready-pulse" data-action="manager" data-id="${def.id}">Activate ($${cost})</button>`;
-            } else if (!hasCards) {
-              actionBtnHtml = `<button class="btn-manager-action need-cards" disabled>${curCards}/${reqCards} Cards</button>`;
-            } else {
-              actionBtnHtml = `<button class="btn-manager-action activate" disabled>Activate ($${cost})</button>`;
-            }
-          }
-        } else {
-          const hasCards = curCards >= reqCards;
-          const hasCash = this.state.cash >= cost;
-          if (hasCards && hasCash) {
-            actionBtnHtml = `<button class="btn-manager-action ready-pulse" data-action="manager" data-id="${def.id}">Lvl ${curLvl + 1} ($${cost})</button>`;
-          } else if (!hasCards) {
-            actionBtnHtml = `<button class="btn-manager-action need-cards" disabled>${curCards}/${reqCards} Cards</button>`;
-          } else {
-            actionBtnHtml = `<button class="btn-manager-action" disabled>Lvl ${curLvl + 1} ($${cost})</button>`;
-          }
-        }
-
-        // Level badge
-        let lvlBadgeHtml = '';
-        if (curLvl === 0) {
-          lvlBadgeHtml = `<span class="lvl-badge locked">${prereqMet ? 'Locked' : '🔒 Locked'}</span>`;
-        } else if (isMax) {
-          lvlBadgeHtml = `<span class="lvl-badge max">⭐ MAX</span>`;
-        } else {
-          lvlBadgeHtml = `<span class="lvl-badge active">Lvl ${curLvl}/${def.maxLevel}</span>`;
-        }
-
-        let prereqNotice = '';
-        if (curLvl === 0 && !prereqMet && prereq) {
-          prereqNotice = `<div class="manager-lock-req">🔒 Prerequisite: ${prereq.label}</div>`;
-        }
-
-        html += `
-          <div class="manager-card rarity-${def.rarity}">
-            <div class="manager-top-row">
-              <div class="manager-identity">
-                <div class="manager-avatar">${def.icon}</div>
-                <div class="manager-name-col">
-                  <div class="manager-title">${def.name}</div>
-                  <div class="manager-role">${def.roleName}</div>
-                </div>
-              </div>
-              <div style="display: flex; gap: 4px; align-items: center;">
-                <span class="rarity-pill ${def.rarity}">${def.rarity}</span>
-                ${lvlBadgeHtml}
-              </div>
-            </div>
-
-            ${cardMeterHtml}
-
-            <div class="manager-perks-row">${currentPerk}</div>
-            <div class="manager-next-perk">${nextPerk}</div>
-            ${prereqNotice}
-
-            <div class="manager-action-row">
-              <span style="font-size: 10px; color: #7f8c8d;">${def.desc}</span>
-              ${actionBtnHtml}
-            </div>
-          </div>
-        `;
-      });
-
-      this.ui.drawerContentList.innerHTML = html;
-
-    } else if (this.activeMainTab === 'crates') {
-      if (this.ui.managerSubTabs) this.ui.managerSubTabs.style.display = 'none';
-
-      const freeReady = this.state.crates.freeTimer <= 0;
-      const freeTimerSec = Math.ceil(this.state.crates.freeTimer);
-
-      let html = `
-        <div style="font-size: 12px; color: #1b4329; font-weight: bold; margin-bottom: 4px;">
-          📦 SUPPLY CRATES & LOOT BOXES
-        </div>
-        <div style="font-size: 11px; color: #666; margin-bottom: 8px;">
-          Open supply crates to unbox Manager Cards and cash drops!
-        </div>
-
-        <!-- Free Crate -->
-        <div class="crate-card">
-          <div class="crate-icon-box">🎁</div>
-          <div class="crate-details">
-            <div class="crate-name">Free Supply Crate</div>
-            <div class="crate-desc">${CRATE_DEFS.free.desc}</div>
-            ${freeReady
-              ? `<div class="crate-timer-badge" style="color: #27ae60;">✨ READY TO UNBOX!</div>`
-              : `<div class="crate-timer-badge">⏱️ Free in ${freeTimerSec}s</div>`
-            }
-          </div>
-          ${freeReady
-            ? `<button class="btn-crate-buy free-claim" data-action="crate" data-id="free">CLAIM FREE! 🎁</button>`
-            : `<button class="btn-crate-buy" disabled>⏱️ ${freeTimerSec}s</button>`
-          }
-        </div>
-
-        <!-- Wooden Crate -->
-        <div class="crate-card">
-          <div class="crate-icon-box">📦</div>
-          <div class="crate-details">
-            <div class="crate-name">Wooden Supply Crate</div>
-            <div class="crate-desc">${CRATE_DEFS.wooden.desc}</div>
-            <div style="font-size: 11px; font-weight: bold; color: #27ae60;">Cost: $80</div>
-          </div>
-          <button class="btn-crate-buy" ${this.state.cash >= 80 ? '' : 'disabled'} data-action="crate" data-id="wooden">
-            Open ($80)
-          </button>
-        </div>
-
-        <!-- Golden Crate -->
-        <div class="crate-card">
-          <div class="crate-icon-box">👑</div>
-          <div class="crate-details">
-            <div class="crate-name">Golden Resort Crate</div>
-            <div class="crate-desc">${CRATE_DEFS.golden.desc}</div>
-            <div style="font-size: 11px; font-weight: bold; color: #f39c12;">Cost: $220 • Guaranteed Epic!</div>
-          </div>
-          <button class="btn-crate-buy" ${this.state.cash >= 220 ? '' : 'disabled'} data-action="crate" data-id="golden" style="background: #f39c12;">
-            Open ($220)
-          </button>
-        </div>
-
-        <!-- Mythic Crate -->
-        <div class="crate-card" style="border-left: 6px solid #2980b9;">
-          <div class="crate-icon-box">🔮</div>
-          <div class="crate-details">
-            <div class="crate-name">Mythic Supply Crate</div>
-            <div class="crate-desc">${CRATE_DEFS.mythic.desc}</div>
-            <div style="font-size: 11px; font-weight: bold; color: #2980b9;">Cost: 100 💎 Gems • 2+ Epics!</div>
-          </div>
-          <button class="btn-crate-buy" ${(this.state.gems || 0) >= 100 ? '' : 'disabled'} data-action="crate" data-id="mythic" style="background: linear-gradient(135deg, #3498db, #2980b9);">
-            Open (100 💎)
-          </button>
-        </div>
-
-        <!-- Emperor Vault -->
-        <div class="crate-card" style="border-left: 6px solid #f39c12;">
-          <div class="crate-icon-box">👑</div>
-          <div class="crate-details">
-            <div class="crate-name">Emperor Vault</div>
-            <div class="crate-desc">${CRATE_DEFS.emperor.desc}</div>
-            <div style="font-size: 11px; font-weight: bold; color: #d4ac0d;">Cost: 250 💎 Gems • 6+ Epics Jackpot!</div>
-          </div>
-          <button class="btn-crate-buy" ${(this.state.gems || 0) >= 250 ? '' : 'disabled'} data-action="crate" data-id="emperor" style="background: linear-gradient(135deg, #f1c40f, #d4ac0d); color: #142819;">
-            Open (250 💎)
-          </button>
-        </div>
-      `;
-
-      this.ui.drawerContentList.innerHTML = html;
-
-    } else if (this.activeMainTab === 'shop') {
-      if (this.ui.managerSubTabs) this.ui.managerSubTabs.style.display = 'none';
-
-      const curGems = this.state.gems || 0;
-      const boostActive = (this.state.boostTimer || 0) > 0;
-      const boostSec = Math.ceil(this.state.boostTimer || 0);
-      const bHrs = Math.floor(boostSec / 3600);
-      const bMins = Math.floor((boostSec % 3600) / 60);
-      const bSecs = boostSec % 60;
-      const boostTimeStr = `${bHrs > 0 ? bHrs + 'h ' : ''}${bMins}m ${bSecs < 10 ? '0' : ''}${bSecs}s`;
-
-      const activeRate = Math.max(3.0, this.getCurrentCampActiveRate());
-      const empireRate = this.getTotalOtherCampsIdleRate();
-      const effMult = boostActive ? (this.state.boostMultiplier || 2.0) : 1.0;
-      const totalSecRate = (activeRate + empireRate) * effMult;
-
-      const warp1hVal = Math.round(totalSecRate * 3600);
-      const warp4hVal = Math.round(totalSecRate * 14400);
-      const warp24hVal = Math.round(totalSecRate * 86400);
-
-      let html = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-          <div>
-            <div style="font-size: 13px; color: #1b4f72; font-weight: bold;">
-              💎 GEM VAULT & RESORT STORE
-            </div>
-            <div style="font-size: 11px; color: #666;">
-              Acquire Gems via Achievements & Store to unlock game-changing Power-Ups!
-            </div>
-          </div>
-          <div class="hud-pill gems" style="font-size: 14px; padding: 4px 8px;">
-            💎 <strong>${curGems.toLocaleString()}</strong>
-          </div>
-        </div>
-
-        <!-- SECTION 1: POWER-UPS & TIME WARPS -->
-        <div class="shop-section-title">
-          <span>⚡</span> POWER-UPS & TIME WARPS
-        </div>
-
-        <!-- 1h Time Warp -->
-        <div class="shop-item-card warp">
-          <div class="shop-item-info">
-            <div class="shop-item-icon">⏱️</div>
-            <div class="shop-item-text">
-              <div class="shop-item-name">1-Hour Time Warp</div>
-              <div class="shop-item-desc">Instantly warp forward 1 hour of active + empire campsite revenue!</div>
-              <div class="shop-item-tag">Payout: +$${warp1hVal.toLocaleString()} Cash</div>
-            </div>
-          </div>
-          <button class="btn-shop-buy warp" ${curGems >= 30 ? '' : 'disabled'} data-action="buy_timeskip" data-seconds="3600" data-cost="30" data-label="1h Warp">
-            💎 30
-          </button>
-        </div>
-
-        <!-- 4h Time Warp -->
-        <div class="shop-item-card warp">
-          <div class="shop-item-info">
-            <div class="shop-item-icon">⏳</div>
-            <div class="shop-item-text">
-              <div class="shop-item-name">4-Hour Time Warp</div>
-              <div class="shop-item-desc">Warps 4 hours of total production into your vault right now!</div>
-              <div class="shop-item-tag">Payout: +$${warp4hVal.toLocaleString()} Cash</div>
-            </div>
-          </div>
-          <button class="btn-shop-buy warp" ${curGems >= 80 ? '' : 'disabled'} data-action="buy_timeskip" data-seconds="14400" data-cost="80" data-label="4h Warp">
-            💎 80
-          </button>
-        </div>
-
-        <!-- 24h Mega Warp -->
-        <div class="shop-item-card warp">
-          <div class="shop-item-info">
-            <div class="shop-item-icon">🌌</div>
-            <div class="shop-item-text">
-              <div class="shop-item-name">24-Hour Mega Warp</div>
-              <div class="shop-item-desc">One full day of automated multi-campsite revenue in a single flash!</div>
-              <div class="shop-item-tag">Payout: +$${warp24hVal.toLocaleString()} Cash</div>
-            </div>
-          </div>
-          <button class="btn-shop-buy warp" ${curGems >= 250 ? '' : 'disabled'} data-action="buy_timeskip" data-seconds="86400" data-cost="250" data-label="24h Mega Warp">
-            💎 250
-          </button>
-        </div>
-
-        <!-- 2x Income Boost (2 Hours) -->
-        <div class="shop-item-card boost">
-          <div class="shop-item-info">
-            <div class="shop-item-icon">⚡</div>
-            <div class="shop-item-text">
-              <div class="shop-item-name">2x Revenue Boost (2 Hours)</div>
-              <div class="shop-item-desc">Doubles all checkouts, trash tips, kiosk sales & empire income!</div>
-              <div class="shop-item-tag">${boostActive ? `Active: ${boostTimeStr} remaining` : '+100% Profit for 2 Hours'}</div>
-            </div>
-          </div>
-          <button class="btn-shop-buy boost" ${curGems >= 50 ? '' : 'disabled'} data-action="buy_boost" data-duration="7200" data-multiplier="2.0" data-cost="50">
-            💎 50
-          </button>
-        </div>
-
-        <!-- 3x Super Boost (4 Hours) -->
-        <div class="shop-item-card boost">
-          <div class="shop-item-info">
-            <div class="shop-item-icon">🚀</div>
-            <div class="shop-item-text">
-              <div class="shop-item-name">3x Super Boost (4 Hours)</div>
-              <div class="shop-item-desc">Triples all campsite income and empire passive streams!</div>
-              <div class="shop-item-tag">+200% Profit for 4 Hours</div>
-            </div>
-          </div>
-          <button class="btn-shop-buy boost" ${curGems >= 120 ? '' : 'disabled'} data-action="buy_boost" data-duration="14400" data-multiplier="3.0" data-cost="120">
-            💎 120
-          </button>
-        </div>
-
-        <!-- SECTION 2: SPECIAL GEM CRATES -->
-        <div class="shop-section-title">
-          <span>🔮</span> SPECIAL GEM CRATES
-        </div>
-
-        <!-- Mythic Supply Crate -->
-        <div class="shop-item-card crate-mythic">
-          <div class="shop-item-info">
-            <div class="shop-item-icon">🔮</div>
-            <div class="shop-item-text">
-              <div class="shop-item-name">${CRATE_DEFS.mythic.name}</div>
-              <div class="shop-item-desc">${CRATE_DEFS.mythic.desc}</div>
-              <div class="shop-item-tag" style="color: #2980b9;">Guaranteed 2+ Epics & 4+ Rares</div>
-            </div>
-          </div>
-          <button class="btn-shop-buy warp" ${curGems >= 100 ? '' : 'disabled'} data-action="crate" data-id="mythic">
-            💎 100
-          </button>
-        </div>
-
-        <!-- Emperor Vault -->
-        <div class="shop-item-card crate-emperor">
-          <div class="shop-item-info">
-            <div class="shop-item-icon">👑</div>
-            <div class="shop-item-text">
-              <div class="shop-item-name">${CRATE_DEFS.emperor.name}</div>
-              <div class="shop-item-desc">${CRATE_DEFS.emperor.desc}</div>
-              <div class="shop-item-tag" style="color: #d4ac0d;">Guaranteed 6+ Epics & 10+ Rares + Mega Jackpot</div>
-            </div>
-          </div>
-          <button class="btn-shop-buy gold" ${curGems >= 250 ? '' : 'disabled'} data-action="crate" data-id="emperor">
-            💎 250
-          </button>
-        </div>
-
-        <!-- SECTION 3: IN-APP PURCHASES (GEM STORE) -->
-        <div class="shop-section-title">
-          <span>💎</span> GEM STORE (IN-APP PURCHASES)
-        </div>
-
-        <!-- Tier 1 -->
-        <div class="shop-item-card iap">
-          <div class="shop-item-info">
-            <div class="shop-item-icon">💎</div>
-            <div class="shop-item-text">
-              <div class="shop-item-name">Pouch of Gems</div>
-              <div class="shop-item-desc">A handy satchel of shiny gems for immediate power-ups.</div>
-              <div class="shop-item-tag" style="color: #27ae60;">+80 Gems</div>
-            </div>
-          </div>
-          <button class="btn-shop-buy iap" data-action="buy_iap" data-gems="80" data-price="$0.99" data-tier="Pouch of Gems">
-            $0.99
-          </button>
-        </div>
-
-        <!-- Tier 2 -->
-        <div class="shop-item-card iap">
-          <div class="shop-item-info">
-            <div class="shop-item-icon">💰</div>
-            <div class="shop-item-text">
-              <div class="shop-item-name">Sack of Gems <span style="color: #e67e22; font-size: 10px;">(+10% BONUS)</span></div>
-              <div class="shop-item-desc">Great value pack to supercharge multiple campsite upgrades.</div>
-              <div class="shop-item-tag" style="color: #27ae60;">+500 Gems</div>
-            </div>
-          </div>
-          <button class="btn-shop-buy iap" data-action="buy_iap" data-gems="500" data-price="$4.99" data-tier="Sack of Gems">
-            $4.99
-          </button>
-        </div>
-
-        <!-- Tier 3 -->
-        <div class="shop-item-card iap">
-          <div class="shop-item-info">
-            <div class="shop-item-icon">💎</div>
-            <div class="shop-item-text">
-              <div class="shop-item-name">Chest of Gems <span style="color: #e67e22; font-size: 10px;">(+25% BONUS)</span></div>
-              <div class="shop-item-desc">Popular resort tycoon choice! Unlock Emperor Vaults with ease.</div>
-              <div class="shop-item-tag" style="color: #27ae60;">+1,400 Gems</div>
-            </div>
-          </div>
-          <button class="btn-shop-buy iap" data-action="buy_iap" data-gems="1400" data-price="$9.99" data-tier="Chest of Gems">
-            $9.99
-          </button>
-        </div>
-
-        <!-- Tier 4 -->
-        <div class="shop-item-card iap">
-          <div class="shop-item-info">
-            <div class="shop-item-icon">👑</div>
-            <div class="shop-item-text">
-              <div class="shop-item-name">Mountain Vault <span style="color: #e67e22; font-size: 10px;">(+50% BEST VALUE)</span></div>
-              <div class="shop-item-desc">Ultimate treasury! Enough gems to rule all regions across the globe.</div>
-              <div class="shop-item-tag" style="color: #27ae60;">+3,600 Gems</div>
-            </div>
-          </div>
-          <button class="btn-shop-buy iap" data-action="buy_iap" data-gems="3600" data-price="$19.99" data-tier="Mountain Vault">
-            $19.99
-          </button>
-        </div>
-      `;
-
-      this.ui.drawerContentList.innerHTML = html;
-
-    } else if (this.activeMainTab === 'goals') {
-      if (this.ui.managerSubTabs) this.ui.managerSubTabs.style.display = 'none';
-
-      const achDefs = this.getActiveAchievementDefs();
-      const allDone = achDefs.every(a => this.state.achievements[a.id]?.claimed);
-      const curSizeInfo = getCampSizeInfo(this.state.camp || 1);
-
-      let html = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <div style="font-size: 12px; color: #8e44ad; font-weight: bold;">
-            🏆 CAMP ${this.state.camp || 1}: ${curSizeInfo.name}
-          </div>
-          <div style="font-size: 10px; color: #16a085; font-weight: bold;">
-            WORLD ${this.state.world || 1} • REGION ${this.state.region || 1}
-          </div>
-        </div>
-        <div style="font-size: 10px; color: #2c3e50; margin-bottom: 4px;">
-          🏷️ <strong>${curSizeInfo.tier}</strong> • 📐 ${curSizeInfo.size} (${curSizeInfo.pitches} Pitches Max)
-        </div>
-        <div style="font-size: 11px; color: #666; margin-bottom: 8px;">
-          ${allDone ? '🎉 ALL ACHIEVEMENTS CLAIMED! Next campsite is unlocked!' : 'Claim all achievements to unlock the next bigger and more lucrative campsite!'}
-        </div>
-      `;
-
-      if (allDone) {
-        html += `
-          <div style="background: #e8f8f5; border: 2px solid #27ae60; border-radius: 8px; padding: 10px; margin-bottom: 10px; text-align: center;">
-            <div style="font-size: 13px; font-weight: bold; color: #1e8449; margin-bottom: 4px;">🌟 CAMPGROUND MASTERED!</div>
-            <div style="font-size: 11px; color: #555; margin-bottom: 8px;">A new destination in this region is ready for your team.</div>
-            <button class="btn-advance-camp" data-action="advance_camp">🚀 PACK UP & ADVANCE TO NEXT RESORT!</button>
-          </div>
-        `;
-      }
-
-      achDefs.forEach(ach => {
-        const curStat = ach.getStat(this.state);
-        const claimed = this.state.achievements[ach.id]?.claimed;
-        const isDone = curStat >= ach.goal;
-        const pct = Math.min(100, Math.round((curStat / ach.goal) * 100));
-
-        let actionHtml = '';
-        if (claimed) {
-          actionHtml = `<span class="ach-status-label" style="color: #27ae60;">✓ Claimed</span>`;
-        } else if (isDone) {
-          actionHtml = `<button class="btn-claim-ach" data-action="goal" data-id="${ach.id}">CLAIM! 🎉</button>`;
-        } else {
-          actionHtml = `<span class="ach-status-label">${curStat} / ${ach.goal}</span>`;
-        }
-
-        html += `
-          <div class="achievement-item ${claimed ? 'claimed' : ''}">
-            <div class="ach-info">
-              <div class="ach-header">
-                <span>${ach.icon}</span>
-                <span>${ach.title}</span>
-              </div>
-              <div class="ach-desc">${ach.desc}</div>
-              <div class="ach-reward-tag">🎁 Reward: ${ach.rewardDesc}</div>
-              <div class="ach-progress-bar">
-                <div class="ach-progress-fill ${isDone ? 'done' : ''}" style="width: ${pct}%;"></div>
-              </div>
-            </div>
-            ${actionHtml}
-          </div>
-        `;
-      });
-
-      this.ui.drawerContentList.innerHTML = html;
-
-    } else if (this.activeMainTab === 'world') {
-      if (this.ui.managerSubTabs) this.ui.managerSubTabs.style.display = 'none';
-
-      const world = this.state.world || 1;
-      const region = this.state.region || 1;
-      const camp = this.state.camp || 1;
-      const maxWorld = this.state.maxUnlockedWorld || 1;
-      const maxRegion = this.state.maxUnlockedRegion || 1;
-      const maxCamp = this.state.maxUnlockedCamp || 1;
-      const biome = this.currentBiome || WORLD_BIOMES[0];
-      const achDefs = this.getActiveAchievementDefs();
-      const claimedCount = achDefs.filter(a => this.state.achievements[a.id]?.claimed).length;
-      const canAdvance = claimedCount >= achDefs.length;
-      const empireIdleRate = this.getTotalOtherCampsIdleRate();
-      const isVisitingOlderCamp = (world < maxWorld) || (world === maxWorld && region < maxRegion) || (world === maxWorld && region === maxRegion && camp < maxCamp);
-      const curSizeInfo = getCampSizeInfo(camp);
-
-      let gridHtml = '';
-      for (let c = 1; c <= 10; c++) {
-        const isUnlocked = (world < maxWorld) ||
-                           (world === maxWorld && region < maxRegion) ||
-                           (world === maxWorld && region === maxRegion && c <= maxCamp);
-        const isCur = (c === camp);
-        const isCleared = c < maxCamp || (this.state.camps?.[getCampKey(world, region, c)]?.idleRate > 0);
-        gridHtml += `
-          <div class="camp-node ${isCleared ? 'cleared' : ''} ${isCur ? 'current' : ''}">
-            <span>${isCur ? '🏕️' : isCleared ? '✅' : isUnlocked ? '🔓' : '🔒'}</span>
-            <span>Camp ${c}</span>
-          </div>
-        `;
-      }
-
-      let listHtml = '';
-      for (let c = 1; c <= 10; c++) {
-        const isUnlocked = (world < maxWorld) ||
-                           (world === maxWorld && region < maxRegion) ||
-                           (world === maxWorld && region === maxRegion && c <= maxCamp);
-        const isCur = (c === camp);
-        const cKey = getCampKey(world, region, c);
-        const cData = this.state.camps?.[cKey];
-        const isCleared = c < maxCamp || (cData && cData.idleRate > 0);
-        const cSize = getCampSizeInfo(c);
-
-        const mgrCount = isCur
-          ? Object.values(this.state.managers || {}).filter(m => m.level > 0).length
-          : (cData ? Object.values(cData.managers || {}).filter(m => m.level > 0).length : 0);
-
-        const idleVal = isCur ? 0 : (cData?.idleRate || 0);
-
-        listHtml += `
-          <div class="camp-item-card ${isCur ? 'active-resort' : ''}">
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-              <div style="font-weight: bold; font-size: 12px; color: #1b4329;">
-                ${isCur ? '🏕️' : isCleared ? '✅' : isUnlocked ? '🔓' : '🔒'} Camp #${c}: ${cSize.name}
-                ${isCur ? '<span style="color: #27ae60; font-size: 10px; margin-left: 4px;">(ACTIVE)</span>' : ''}
-              </div>
-              <div style="font-size: 10px; color: #7f8c8d;">
-                🏷️ ${cSize.tier} • 📐 ${cSize.size} (${cSize.pitches} Pitches Max)
-              </div>
-              <div style="font-size: 10px; color: #666;">
-                ${mgrCount > 0 ? `👔 ${mgrCount} Managers` : 'No staff yet'} • ${idleVal > 0 ? `<strong style="color: #b7950b;">+$${idleVal}/s Idle</strong>` : isCur ? 'Active Level' : 'Unexplored'}
-              </div>
-            </div>
-            <div>
-              ${isCur ? `
-                <button class="btn-camp-visit current" disabled>Current</button>
-              ` : isUnlocked ? `
-                <button class="btn-camp-visit" data-action="visit_camp" data-camp="${c}" data-region="${region}" data-world="${world}">
-                  Visit ✈️
-                </button>
-              ` : `
-                <span style="font-size: 10px; color: #999;">Locked 🔒</span>
-              `}
-            </div>
-          </div>
-        `;
-      }
-
-      let html = `
-        <div style="font-size: 12px; color: #1b4f72; font-weight: bold; margin-bottom: 4px;">
-          🗺️ GLOBAL RESORT EXPEDITION
-        </div>
-        <div style="font-size: 11px; color: #666; margin-bottom: 8px;">
-          Each Region has 10 Campsites. Previous campsites continue idling in the background!
-        </div>
-
-        <div class="world-stat-box">
-          <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; color: #1b4329;">
-            <span>🌍 WORLD ${world} / 100</span>
-            <span>📍 REGION ${region} / 100</span>
-          </div>
-          <div style="font-size: 11px; color: #2980b9;">
-            Biome: <strong>${biome.name}</strong> (${biome.theme})
-          </div>
-          <div style="font-size: 11px; color: #555;">
-            Current Resort: <strong>${curSizeInfo.name} (Camp #${camp})</strong> • 📐 ${curSizeInfo.size} (${curSizeInfo.tier})
-            ${isVisitingOlderCamp ? ' <span style="color: #e67e22; font-weight: bold;">(Visiting Older Resort)</span>' : ''}
-          </div>
-          <div style="font-size: 11px; color: #27ae60; font-weight: bold;">
-            Resort Objectives: ${claimedCount}/${achDefs.length} Claimed
-          </div>
-          <div style="font-size: 11px; color: #b7950b; font-weight: bold; margin-top: 2px;">
-            ⚡ Empire Idle Revenue: +$${empireIdleRate.toFixed(1)}/sec
-          </div>
-        </div>
-
-        <div class="world-stat-box" style="margin-top: 8px;">
-          <div style="font-size: 11px; font-weight: bold; color: #1b4329; margin-bottom: 4px;">REGION CAMPSITES (10 STAGES)</div>
-          <div class="world-level-grid">
-            ${gridHtml}
-          </div>
-        </div>
-
-        <div class="world-stat-box" style="margin-top: 8px;">
-          <div style="font-size: 11px; font-weight: bold; color: #1b4329; margin-bottom: 4px;">AUTOMATED RESORTS & IDLE VISITS</div>
-          <div style="display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto;">
-            ${listHtml}
-          </div>
-        </div>
-
-        <div style="margin-top: 10px;">
-          ${isVisitingOlderCamp ? `
-            <button class="btn-advance-camp" data-action="return_highest_camp" style="background: linear-gradient(135deg, #3498db, #2980b9); margin-bottom: 8px;">
-              🏕️ RETURN TO FRONTIER RESORT (Camp #${maxCamp})
-            </button>
-          ` : canAdvance ? `
-            <button class="btn-advance-camp" data-action="advance_camp">
-              🚀 PACK UP & ADVANCE TO NEXT RESORT!
-            </button>
-          ` : `
-            <div style="text-align: center; font-size: 11px; color: #7f8c8d; padding: 6px;">
-              🔒 Complete all 11 achievements in the Goals tab to unlock the next resort!
-            </div>
-          `}
-        </div>
-      `;
-
-      this.ui.drawerContentList.innerHTML = html;
-
-    } else if (this.activeMainTab === 'franchise' || this.activeMainTab === 'ranger') {
-      if (this.ui.managerSubTabs) this.ui.managerSubTabs.style.display = 'none';
-
-      if (!this.state.franchiseUpgrades) {
-        this.state.franchiseUpgrades = {
-          speedLevel: this.state.upgrades?.speedLevel || 1,
-          capacityLevel: this.state.upgrades?.capacityLevel || 1,
-          globalIncomeLevel: 0,
-          seedCapitalLevel: 0,
-          staffSpeedLevel: 0
-        };
-      }
-      const upg = this.state.franchiseUpgrades;
-      const vaultGold = Math.floor(this.state.empireGold || 0);
-
-      // Upgrade 1: Ranger Speed
-      const spdLvl = upg.speedLevel || 1;
-      const spdCost = Math.round(40 * Math.pow(1.65, spdLvl - 1));
-      const spdMax = spdLvl >= 10;
-
-      // Upgrade 2: Ranger Cargo Capacity
-      const capLvl = upg.capacityLevel || 1;
-      const capCost = Math.round(50 * Math.pow(1.70, capLvl - 1));
-      const capMax = capLvl >= 10;
-
-      // Upgrade 3: Fast Investor (Deposit Speed)
-      const investLvl = upg.investSpeedLevel || 1;
-      const investCost = Math.round(45 * Math.pow(1.65, investLvl - 1));
-      const investMax = investLvl >= 10;
-
-      // Upgrade 4: Global Franchise Multiplier
-      const incLvl = upg.globalIncomeLevel || 0;
-      const incCost = Math.round(80 * Math.pow(1.85, incLvl));
-      const incMax = incLvl >= 10;
-
-      // Upgrade 5: Seed Capital
-      const seedLvl = upg.seedCapitalLevel || 0;
-      const seedCost = Math.round(60 * Math.pow(1.75, seedLvl));
-      const seedMax = seedLvl >= 10;
-
-      // Upgrade 6: Staff Cleaner Logistics
-      const staffLvl = upg.staffSpeedLevel || 0;
-      const staffCost = Math.round(55 * Math.pow(1.75, staffLvl));
-      const staffMax = staffLvl >= 10;
-
-      const html = `
-        <div style="background: linear-gradient(135deg, #fef9e7, #fcf3cf); border: 2px solid #b7950b; border-radius: 8px; padding: 10px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.06);">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div style="font-size: 13px; font-weight: bold; color: #7d6608;">🏛️ EMPIRE VAULT TREASURY</div>
-              <div style="font-size: 10px; color: #7f8c8d;">Accumulated passive revenue from automated resorts worldwide</div>
-            </div>
-            <div style="font-size: 18px; font-weight: bold; color: #b7950b;">
-              $${vaultGold.toLocaleString()}
-            </div>
-          </div>
-        </div>
-
-        <div style="font-size: 12px; color: #1b4329; font-weight: bold; margin-bottom: 4px;">
-          ⭐ WORLDWIDE FRANCHISE & RANGER UPGRADES
-        </div>
-        <div style="font-size: 11px; color: #666; margin-bottom: 8px;">
-          These upgrades are permanent and apply across all 100 Regions & 10 Campsites!
-        </div>
-
-        <!-- 1. Ranger Speed -->
-        <div class="manager-card rarity-rare">
-          <div class="manager-top-row">
-            <div class="manager-identity">
-              <div class="manager-avatar">👟</div>
-              <div class="manager-name-col">
-                <div class="manager-title">Ranger Sprint</div>
-                <div class="manager-role">Movement Speed (Global)</div>
-              </div>
-            </div>
-            <span class="lvl-badge ${spdMax ? 'max' : 'active'}">Lvl ${spdLvl}/10</span>
-          </div>
-          <div class="manager-perks-row">Current Speed: ${this.state.rangerSpeed} px/s</div>
-          <div class="manager-next-perk">${spdMax ? '⭐ MAX Level reached' : `Next: +16 px/s (${this.state.rangerSpeed + 16} px/s)`}</div>
-          <div class="manager-action-row">
-            <span style="font-size: 10px; color: #7f8c8d;">Walk faster everywhere</span>
-            ${spdMax
-              ? `<button class="btn-manager-action maxed" disabled>⭐ MAX</button>`
-              : `<button class="btn-manager-action ${vaultGold >= spdCost ? 'ready-pulse' : ''}" ${vaultGold >= spdCost ? '' : 'disabled'} data-action="franchise" data-id="ranger_speed">Upgrade ($${spdCost.toLocaleString()} 🏛️)</button>`
-            }
-          </div>
-        </div>
-
-        <!-- 2. Ranger Backpack Capacity -->
-        <div class="manager-card rarity-rare">
-          <div class="manager-top-row">
-            <div class="manager-identity">
-              <div class="manager-avatar">🎒</div>
-              <div class="manager-name-col">
-                <div class="manager-title">Backpack Cargo</div>
-                <div class="manager-role">Firewood Capacity (Global)</div>
-              </div>
-            </div>
-            <span class="lvl-badge ${capMax ? 'max' : 'active'}">Lvl ${capLvl}/10</span>
-          </div>
-          <div class="manager-perks-row">Current Cargo: ${this.state.rangerCapacity} Firewood Slots</div>
-          <div class="manager-next-perk">${capMax ? '⭐ MAX Level reached' : `Next: +2 Cargo Slots (${this.state.rangerCapacity + 2} Slots)`}</div>
-          <div class="manager-action-row">
-            <span style="font-size: 10px; color: #7f8c8d;">Carry more wood at once</span>
-            ${capMax
-              ? `<button class="btn-manager-action maxed" disabled>⭐ MAX</button>`
-              : `<button class="btn-manager-action ${vaultGold >= capCost ? 'ready-pulse' : ''}" ${vaultGold >= capCost ? '' : 'disabled'} data-action="franchise" data-id="ranger_cap">Upgrade ($${capCost.toLocaleString()} 🏛️)</button>`
-            }
-          </div>
-        </div>
-
-        <!-- 3. Fast Investor (Build Spending Speed) -->
-        <div class="manager-card rarity-rare">
-          <div class="manager-top-row">
-            <div class="manager-identity">
-              <div class="manager-avatar">💸</div>
-              <div class="manager-name-col">
-                <div class="manager-title">Fast Investor</div>
-                <div class="manager-role">Build Spending Speed (+50% / lvl)</div>
-              </div>
-            </div>
-            <span class="lvl-badge ${investMax ? 'max' : 'active'}">Lvl ${investLvl}/10</span>
-          </div>
-          <div class="manager-perks-row">Current Base Rate: $${Math.round(110 * (1 + (investLvl - 1) * 0.5))}/s (×${(1 + (investLvl - 1) * 0.5).toFixed(1)})</div>
-          <div class="manager-next-perk">${investMax ? '⭐ MAX Level reached' : `Next: $${Math.round(110 * (1 + investLvl * 0.5))}/s (+50% faster construction transfer)`}</div>
-          <div class="manager-action-row">
-            <span style="font-size: 10px; color: #7f8c8d;">Pour cash faster into build pads</span>
-            ${investMax
-              ? `<button class="btn-manager-action maxed" disabled>⭐ MAX</button>`
-              : `<button class="btn-manager-action ${vaultGold >= investCost ? 'ready-pulse' : ''}" ${vaultGold >= investCost ? '' : 'disabled'} data-action="franchise" data-id="invest_speed">Upgrade ($${investCost.toLocaleString()} 🏛️)</button>`
-            }
-          </div>
-        </div>
-
-        <!-- 4. Global Franchise Multiplier -->
-        <div class="manager-card rarity-epic">
-          <div class="manager-top-row">
-            <div class="manager-identity">
-              <div class="manager-avatar">📈</div>
-              <div class="manager-name-col">
-                <div class="manager-title">Empire Revenue Multiplier</div>
-                <div class="manager-role">Worldwide Profit (+15% / lvl)</div>
-              </div>
-            </div>
-            <span class="lvl-badge ${incMax ? 'max' : incLvl > 0 ? 'active' : 'locked'}">Lvl ${incLvl}/10</span>
-          </div>
-          <div class="manager-perks-row">Current Bonus: +${incLvl * 15}% Income Worldwide</div>
-          <div class="manager-next-perk">${incMax ? '⭐ MAX Level reached' : `Next: +${(incLvl + 1) * 15}% Total Revenue (+15% boost)`}</div>
-          <div class="manager-action-row">
-            <span style="font-size: 10px; color: #7f8c8d;">Boosts active & idle profits</span>
-            ${incMax
-              ? `<button class="btn-manager-action maxed" disabled>⭐ MAX</button>`
-              : `<button class="btn-manager-action ${vaultGold >= incCost ? 'ready-pulse' : ''}" ${vaultGold >= incCost ? '' : 'disabled'} data-action="franchise" data-id="global_income">Upgrade ($${incCost.toLocaleString()} 🏛️)</button>`
-            }
-          </div>
-        </div>
-
-        <!-- 5. Seed Capital -->
-        <div class="manager-card rarity-epic">
-          <div class="manager-top-row">
-            <div class="manager-identity">
-              <div class="manager-avatar">🪙</div>
-              <div class="manager-name-col">
-                <div class="manager-title">Franchise Seed Capital</div>
-                <div class="manager-role">New Campsite Starting Cash</div>
-              </div>
-            </div>
-            <span class="lvl-badge ${seedMax ? 'max' : seedLvl > 0 ? 'active' : 'locked'}">Lvl ${seedLvl}/10</span>
-          </div>
-          <div class="manager-perks-row">Current Starter Funds: $${(60 + seedLvl * 100).toLocaleString()} 💵</div>
-          <div class="manager-next-perk">${seedMax ? '⭐ MAX Level reached' : `Next: Start each new campsite with $${(60 + (seedLvl + 1) * 100).toLocaleString()} 💵`}</div>
-          <div class="manager-action-row">
-            <span style="font-size: 10px; color: #7f8c8d;">Instant jumpstart on fresh camps</span>
-            ${seedMax
-              ? `<button class="btn-manager-action maxed" disabled>⭐ MAX</button>`
-              : `<button class="btn-manager-action ${vaultGold >= seedCost ? 'ready-pulse' : ''}" ${vaultGold >= seedCost ? '' : 'disabled'} data-action="franchise" data-id="seed_capital">Upgrade ($${seedCost.toLocaleString()} 🏛️)</button>`
-            }
-          </div>
-        </div>
-
-        <!-- 6. Staff Cleaner Speed -->
-        <div class="manager-card rarity-rare">
-          <div class="manager-top-row">
-            <div class="manager-identity">
-              <div class="manager-avatar">🧹</div>
-              <div class="manager-name-col">
-                <div class="manager-title">Eco Fleet Logistics</div>
-                <div class="manager-role">Cleaner Speed (+15% / lvl)</div>
-              </div>
-            </div>
-            <span class="lvl-badge ${staffMax ? 'max' : staffLvl > 0 ? 'active' : 'locked'}">Lvl ${staffLvl}/10</span>
-          </div>
-          <div class="manager-perks-row">Current Bonus: +${staffLvl * 15}% Cleaner Speed Worldwide</div>
-          <div class="manager-next-perk">${staffMax ? '⭐ MAX Level reached' : `Next: +${(staffLvl + 1) * 15}% Speed for Oliver, Chloe & Felix`}</div>
-          <div class="manager-action-row">
-            <span style="font-size: 10px; color: #7f8c8d;">Faster trash & cash pickup</span>
-            ${staffMax
-              ? `<button class="btn-manager-action maxed" disabled>⭐ MAX</button>`
-              : `<button class="btn-manager-action ${vaultGold >= staffCost ? 'ready-pulse' : ''}" ${vaultGold >= staffCost ? '' : 'disabled'} data-action="franchise" data-id="staff_speed">Upgrade ($${staffCost.toLocaleString()} 🏛️)</button>`
-            }
-          </div>
-        </div>
-
-        <!-- Reset Resort -->
-        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed #d5dbdb; text-align: center;">
-          <button class="btn-manager-action locked" data-action="reset" data-id="reset" style="width: 100%; padding: 8px 12px; font-size: 11px;">
-            🔄 Resort komplett neu starten (Reset Save)
-          </button>
-        </div>
-      `;
-
-      this.ui.drawerContentList.innerHTML = html;
-    }
-
-    // Attach delegated click listeners to all action buttons in drawerContentList
-    this.ui.drawerContentList.querySelectorAll('button:not(:disabled)').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const target = e.currentTarget;
-        const action = target.dataset.action;
-        const id = target.dataset.id;
-        if (!action) return;
-
-        if (action === 'manager') {
-          this.activateOrUpgradeManager(id);
-        } else if (action === 'crate') {
-          this.openCrate(id);
-        } else if (action === 'buy_timeskip') {
-          const sec = parseInt(target.dataset.seconds, 10);
-          const cost = parseInt(target.dataset.cost, 10);
-          const label = target.dataset.label || 'Time Warp';
-          this.buyTimeSkip(sec, cost, label);
-        } else if (action === 'buy_boost') {
-          const duration = parseInt(target.dataset.duration, 10);
-          const mult = parseFloat(target.dataset.multiplier);
-          const cost = parseInt(target.dataset.cost, 10);
-          this.buyIncomeBoost(duration, mult, cost);
-        } else if (action === 'buy_iap') {
-          const gems = parseInt(target.dataset.gems, 10);
-          const price = target.dataset.price || '$0.99';
-          const tier = target.dataset.tier || 'Gem Pack';
-          this.buyIAPGems(gems, price, tier);
-        } else if (action === 'goal') {
-          this.claimAchievement(id);
-        } else if (action === 'ranger' || action === 'franchise') {
-          this.buyFranchiseUpgrade(id);
-        } else if (action === 'advance_camp') {
-          this.advanceToNextCamp();
-        } else if (action === 'visit_camp') {
-          const targetC = parseInt(target.dataset.camp, 10);
-          const targetR = parseInt(target.dataset.region || this.state.region, 10);
-          const targetW = parseInt(target.dataset.world || this.state.world, 10);
-          if (targetC > 0) {
-            this.switchCamp(targetW, targetR, targetC);
-          }
-        } else if (action === 'return_highest_camp') {
-          const maxW = this.state.maxUnlockedWorld || 1;
-          const maxR = this.state.maxUnlockedRegion || 1;
-          const maxC = this.state.maxUnlockedCamp || 1;
-          this.switchCamp(maxW, maxR, maxC);
-        } else if (action === 'reset') {
-          this.resetGame();
-        }
-      });
-    });
-
-    if (prevScroll > 0 && this.ui.drawerContentList) {
-      this.ui.drawerContentList.scrollTop = prevScroll;
-    }
-  }
-
-  updateBadges() {
-    // 1. Managers Badge: can any manager be activated or upgraded?
-    let canUpgradeManager = false;
-    Object.values(MANAGER_DEFS).forEach(def => {
-      const stateObj = this.state.managers[def.id] || { level: 0, cards: 0 };
-      if (stateObj.level < def.maxLevel) {
-        let reqCards = 0;
-        let cost = 0;
-        if (stateObj.level === 0) {
-          const prereq = MANAGER_PREREQS[def.id];
-          if (prereq && !prereq.isMet(this)) return;
-          reqCards = def.unlockCards;
-          cost = def.levels[0].cost;
-        } else {
-          reqCards = def.levels[stateObj.level].cardsReq;
-          cost = def.levels[stateObj.level].cost;
-        }
-        if (stateObj.cards >= reqCards && this.state.cash >= cost) {
-          canUpgradeManager = true;
-        }
-      }
-    });
-
-    if (this.ui?.badgeManagers) {
-      this.ui.badgeManagers.style.display = canUpgradeManager ? 'block' : 'none';
-    }
-
-    // 2. Crates Badge: is free crate ready?
-    const freeReady = (this.state.crates?.freeTimer || 0) <= 0;
-    if (this.ui?.badgeCrates) {
-      this.ui.badgeCrates.style.display = freeReady ? 'block' : 'none';
-      this.ui.badgeCrates.textContent = 'FREE';
-    }
-
-    // 3. Goals Badge: any unclaimed completed achievements?
-    let unclaimedGoals = 0;
-    const achDefs = this.getActiveAchievementDefs();
-    achDefs.forEach(ach => {
-      const claimed = this.state.achievements?.[ach.id]?.claimed;
-      if (!claimed && ach.getStat(this.state) >= ach.goal) {
-        unclaimedGoals++;
-      }
-    });
-
-    if (this.ui?.badgeGoals) {
-      if (unclaimedGoals > 0) {
-        this.ui.badgeGoals.style.display = 'block';
-        this.ui.badgeGoals.textContent = unclaimedGoals;
-      } else {
-        this.ui.badgeGoals.style.display = 'none';
-      }
-    }
-  }
-
-  updateHUD() {
-    const curGuests = this.getCurrentGuestsCount();
-    const totCap = this.getTotalCapacity();
-
-    if (this.ui?.cash) this.ui.cash.textContent = `$${Math.floor(this.state.cash)}`;
-    if (this.ui?.power) {
-      this.ui.power.textContent = `${this.state.powerDemand}/${this.state.powerCapacity} kW`;
-      this.ui.power.parentElement.classList.toggle('overload', this.state.powerDemand > this.state.powerCapacity);
-    }
-    if (this.ui?.water) {
-      this.ui.water.textContent = `${this.state.waterDemand}/${this.state.waterCapacity} m³`;
-      this.ui.water.parentElement.classList.toggle('overload', this.state.waterDemand > this.state.waterCapacity);
-    }
-    // Shows Active Guests / Total Sleeping Capacity (e.g. 🏕️ 6/14)
-    if (this.ui?.campers) {
-      this.ui.campers.textContent = `${curGuests}/${totCap}`;
-    }
-
-    if (this.ui?.hudGems) {
-      this.ui.hudGems.textContent = Math.floor(this.state.gems || 0).toLocaleString();
-    }
-
-    if (this.ui?.hudVault) {
-      this.ui.hudVault.textContent = '$' + Math.floor(this.state.empireGold || 0).toLocaleString();
-    }
-
-    // Active Revenue Boost Banner
-    if (this.ui?.boostBanner) {
-      if (this.state.boostTimer > 0) {
-        this.ui.boostBanner.style.display = 'block';
-        const bSec = Math.ceil(this.state.boostTimer);
-        const hrs = Math.floor(bSec / 3600);
-        const mins = Math.floor((bSec % 3600) / 60);
-        const secs = bSec % 60;
-        const timeStr = `${hrs > 0 ? hrs + 'h ' : ''}${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
-        this.ui.boostBanner.textContent = `⚡ ${this.state.boostMultiplier}x BOOST ACTIVE (${timeStr})`;
-      } else {
-        this.ui.boostBanner.style.display = 'none';
-      }
-    }
-
-    if (this.ui?.stackBadge) {
-      this.ui.stackBadge.textContent = `🪵 ${this.player.carriedItems}/${this.state.rangerCapacity}`;
-    }
-
-    if (this.ui?.hudWorldInfo) {
-      const w = this.state.world || 1;
-      const r = this.state.region || 1;
-      const c = this.state.camp || 1;
-      this.ui.hudWorldInfo.textContent = `W${w} R${r}: C${c}`;
-    }
-
-    // Empire Idle Income Pill
-    const totalIdleRate = this.getTotalOtherCampsIdleRate();
-    if (this.ui?.hudEmpireIdle && this.ui?.hudIdleRate) {
-      if (totalIdleRate > 0) {
-        this.ui.hudEmpireIdle.style.display = 'flex';
-        this.ui.hudIdleRate.textContent = `+$${totalIdleRate.toFixed(1)}/s`;
-      } else {
-        this.ui.hudEmpireIdle.style.display = 'none';
-      }
-    }
-
-    this.checkCampgroundCompletion();
-    this.updateBadges();
-    if (this.isMainMenuOpen) {
-      this.updateMainMenuContent();
-    }
-
-    // Refresh buttons if drawer is open
-    if (this.ui?.upgradesDrawer?.classList.contains('open')) {
-      if (this.activeMainTab === 'ranger') {
-        this.ui.drawerContentList?.querySelectorAll('button[data-action="ranger"]').forEach(btn => {
-          const id = btn.dataset.id;
-          let cost = 0;
-          if (id === 'ranger_speed') cost = 50 * this.state.upgrades.speedLevel;
-          else if (id === 'ranger_cap') cost = 60 * this.state.upgrades.capacityLevel;
-          btn.disabled = this.state.cash < cost;
-        });
-      } else if (this.activeMainTab === 'crates') {
-        this.ui.drawerContentList?.querySelectorAll('button[data-action="crate"]').forEach(btn => {
-          const id = btn.dataset.id;
-          if (id === 'wooden') btn.disabled = this.state.cash < 80;
-          else if (id === 'golden') btn.disabled = this.state.cash < 220;
-          else if (id === 'mythic') btn.disabled = (this.state.gems || 0) < 100;
-          else if (id === 'emperor') btn.disabled = (this.state.gems || 0) < 250;
-        });
-      } else if (this.activeMainTab === 'shop') {
-        this.ui.drawerContentList?.querySelectorAll('button[data-action="buy_timeskip"]').forEach(btn => {
-          const cost = parseInt(btn.dataset.cost, 10);
-          btn.disabled = (this.state.gems || 0) < cost;
-        });
-        this.ui.drawerContentList?.querySelectorAll('button[data-action="buy_boost"]').forEach(btn => {
-          const cost = parseInt(btn.dataset.cost, 10);
-          btn.disabled = (this.state.gems || 0) < cost;
-        });
-        this.ui.drawerContentList?.querySelectorAll('button[data-action="crate"]').forEach(btn => {
-          const id = btn.dataset.id;
-          if (id === 'mythic') btn.disabled = (this.state.gems || 0) < 100;
-          else if (id === 'emperor') btn.disabled = (this.state.gems || 0) < 250;
-        });
-      }
-    }
-  }
+  updateBadges() { this.hud.updateBadges(); }
+  updateHUD() { this.hud.updateHUD(); }
 
   // --- MAIN 60FPS GAME LOOP ---
   loop(timestamp) {
@@ -4234,6 +2122,19 @@ class Campers2DGame {
       }
     }
 
+    // Staff Salaries / Payroll Cycle (Operating Expenses)
+    const staffWageRate = getTotalStaffWage(this.state.managers);
+    if (staffWageRate > 0) {
+      this.payrollTimer = (this.payrollTimer || 0) + dt;
+      if (this.payrollTimer >= 5.0) {
+        this.payrollTimer = 0;
+        this.processStaffPayroll(5.0);
+      }
+    } else {
+      this.staffOnStrike = false;
+      this.payrollTimer = 0;
+    }
+
     if (this.frame % 30 === 0) {
       this.updateBadges();
       if (this.state.boostTimer > 0) {
@@ -4252,6 +2153,7 @@ class Campers2DGame {
     this.updateCampers(dt);
     this.updatePitches(dt);
     this.updateBuildPads(dt);
+    this.updateUpgradePads(dt);
     this.updateWoodChopping(dt);
     this.updateCampfire(dt);
     this.updateFishing(dt);
@@ -4343,8 +2245,11 @@ class Campers2DGame {
   // --- RECEPTION & MULTI-GUEST CHECK-IN ---
   updateCampers(dt) {
     this.camperSpawnTimer += dt;
-    // Spawn faster and allow up to 20 queueing/active campers
-    if (this.camperSpawnTimer > 3.2 && this.campers.length < 22) {
+    const isJoy = this.state.campfireJoyTime > 0;
+    const spawnThreshold = isJoy ? 2.2 : 3.5;
+    const queueCampers = this.campers.filter(c => c.state === 'queueing');
+
+    if (this.camperSpawnTimer > spawnThreshold && queueCampers.length < 10) {
       this.camperSpawnTimer = 0;
       this.spawnCamperGroup();
     }
@@ -4356,9 +2261,6 @@ class Campers2DGame {
     // Is Ranger standing at the Reception desk?
     const distToReception = Math.hypot(this.player.x - this.receptionPos.x, this.player.y - this.receptionPos.y);
     const canCheckin = distToReception < 28 && this.checkinCooldown <= 0;
-
-    // Get queueing campers
-    const queueCampers = this.campers.filter(c => c.state === 'queueing');
 
     // Check in waiting camper parties if open beds exist
     if (canCheckin && queueCampers.length > 0) {
@@ -4379,7 +2281,7 @@ class Campers2DGame {
 
         const pitch = this.findAvailablePitch(partyLeader.requestedTier, partySize, waitTime);
         if (pitch) {
-          this.checkinCooldown = 0.35; // Rapid smooth check-in cadence
+          this.checkinCooldown = 0.20; // Rapid smooth check-in cadence
 
           const isUpgrade = pitch.tier !== partyLeader.requestedTier;
           party.forEach((camper) => {
@@ -4392,7 +2294,8 @@ class Campers2DGame {
 
           window.soundFX?.playCheckin();
           const basePerGuest = pitch.baseIncome ? Math.round(pitch.baseIncome / pitch.capacity) : 15;
-          const fee = basePerGuest * partySize;
+          const clerkTip = (this.state.managers.alex?.level > 1 ? 5 : 0) + (this.state.managers.sam?.level > 0 ? 5 : 0);
+          const fee = (Math.max(6, Math.round(basePerGuest * 0.35)) + clerkTip) * partySize;
           this.addCash(fee);
           if (!this.state.stats) this.state.stats = {};
           this.state.stats.totalCampersServed = (this.state.stats.totalCampersServed || 0) + partySize;
@@ -4457,6 +2360,16 @@ class Campers2DGame {
         camper.dir = 'down';
         camper.walkCycle += dt * 8;
         camper.bubble = '💵';
+        if (Math.random() < 0.004 && this.trashBags.length < 15) {
+          const originTier = camper.targetPitch?.tier;
+          const originId = camper.targetPitch?.id;
+          this.trashBags.push({
+            x: camper.x,
+            y: camper.y,
+            pitchId: originId,
+            pitchTier: originTier
+          });
+        }
         if (camper.y > this.worldH + 20) {
           this.campers.splice(i, 1);
           this.updateHUD();
@@ -4597,24 +2510,38 @@ class Campers2DGame {
             camper.bubble = '💵';
           });
 
-          // Payout proportional to number of occupants
-          const totalIncome = (p.baseIncome * (isJoy ? 1.5 : 1.0)) * guestCount;
+          // Payout proportional to number of occupants and building upgrade level
+          const guestRatio = guestCount / (p.baseCapacity || p.capacity || 1);
+          let totalIncome = Math.round(p.baseIncome * (isJoy ? 1.5 : 1.0) * guestRatio);
+
+          // Overload penalty: If power or water demand exceeds capacity, income drops by 50%
+          if (this.state.powerDemand > this.state.powerCapacity || this.state.waterDemand > this.state.waterCapacity) {
+            totalIncome = Math.max(1, Math.round(totalIncome * 0.5));
+          }
 
           // Drop cash bundles
           this.cashDrops.push({
             x: p.dropX,
             y: p.dropY,
-            amount: totalIncome
+            amount: totalIncome,
+            pitchId: p.id,
+            pitchTier: p.tier
           });
 
           // Chance of leaving a trash bag
-          if (Math.random() < 0.5) {
-            this.trashBags.push({ x: p.dropX + 10, y: p.dropY });
+          if (Math.random() < 0.85) {
+            this.trashBags.push({
+              x: p.dropX + 10,
+              y: p.dropY,
+              pitchId: p.id,
+              pitchTier: p.tier
+            });
           }
 
           p.guests = [];
           p.stayTimer = 0;
-          this.state.totalCampersServed += guestCount;
+          if (!this.state.stats) this.state.stats = {};
+          this.state.stats.totalCampersServed = (this.state.stats.totalCampersServed || 0) + guestCount;
           this.updateHUD();
         }
       }
@@ -4642,11 +2569,11 @@ class Campers2DGame {
       const dist = Math.hypot(this.player.x - tb.x, this.player.y - tb.y);
       if (dist < 22) {
         this.trashBags.splice(i, 1);
-        this.addCash(15);
+        this.addCash(25);
         if (!this.state.stats) this.state.stats = {};
         this.state.stats.trashCollected = (this.state.stats.trashCollected || 0) + 1;
         window.soundFX?.playPop();
-        this.showFloatText(tb.x, tb.y, '🧹 +$15 Cleaned!', '#f39c12');
+        this.showFloatText(tb.x, tb.y, '🧹 +$25 Cleaned!', '#f39c12');
       }
     }
   }
@@ -4659,13 +2586,13 @@ class Campers2DGame {
       if (this.frame % 30 === 0) {
         this.showFloatText(this.pierPos.x, this.pierPos.y - 12, '🎣 Fishing...', '#5dade2');
       }
-      if (this.fishingTimer > 2.6) {
+      if (this.fishingTimer > 1.8) {
         this.fishingTimer = 0;
-        this.addCash(25);
+        this.addCash(40);
         if (!this.state.stats) this.state.stats = {};
         this.state.stats.fishCaught = (this.state.stats.fishCaught || 0) + 1;
         window.soundFX?.playCoin();
-        this.showFloatText(this.pierPos.x, this.pierPos.y - 14, '🐟 Rainbow Trout +$25!', '#2ecc71');
+        this.showFloatText(this.pierPos.x, this.pierPos.y - 14, '🐟 Rainbow Trout +$40!', '#2ecc71');
       }
     } else {
       this.fishingTimer = 0;
@@ -4675,11 +2602,14 @@ class Campers2DGame {
   // --- SNACK KIOSK VISITS ---
   updateKiosk(dt) {
     if (!this.hasKiosk) return;
-    if (this.frame % 160 === 0 && this.campers.length > 0) {
-      this.addCash(14);
+    if (this.frame % 100 === 0 && this.campers.length > 0) {
+      const kioskLvl = this.state.buildingLevels?.['pad_kiosk'] || 1;
+      const kioskMult = getBuildingIncomeMultiplier(kioskLvl);
+      const sale = Math.round(22 * kioskMult);
+      this.addCash(sale);
       if (!this.state.stats) this.state.stats = {};
       this.state.stats.kioskOrders = (this.state.stats.kioskOrders || 0) + 1;
-      this.showFloatText(this.kioskPos.x, this.kioskPos.y - 15, '🍦 Kiosk Sale +$14', '#e67e22');
+      this.showFloatText(this.kioskPos.x, this.kioskPos.y - 15, `🍦 Kiosk Sale +$${sale}`, '#e67e22');
     }
   }
 
@@ -4695,9 +2625,9 @@ class Campers2DGame {
       const dist = Math.hypot(this.player.x - pad.x, this.player.y - pad.y);
       if (dist < pad.radius && this.state.cash > 0 && pad.paid < pad.cost) {
         pad.standTimer = (pad.standTimer || 0) + dt;
-        // Continuous standing ramp-up (ramps up to 5x over 3 seconds)
-        const ramp = Math.min(5.0, 1.0 + pad.standTimer * 1.35);
-        const ratePerSec = 110 * investMult * ramp;
+        // Continuous standing ramp-up (ramps up to 6x over 3 seconds)
+        const ramp = Math.min(6.0, 1.0 + pad.standTimer * 1.5);
+        const ratePerSec = 180 * investMult * ramp;
         const needed = pad.cost - pad.paid;
         const stream = Math.min(this.state.cash, needed, ratePerSec * dt);
 
@@ -4743,6 +2673,14 @@ class Campers2DGame {
           }
 
           pad.onComplete(false);
+
+          // Spawn any cleaner workers that were awaiting this new facility
+          ['oliver', 'chloe', 'felix', 'bella'].forEach(workerId => {
+            if (this.state.managers[workerId]?.level > 0 && !this.workers[workerId]) {
+              this.spawnWorkerEntity(workerId);
+            }
+          });
+
           this.updateBadges();
           this.saveState();
           break;
@@ -4816,6 +2754,17 @@ class Campers2DGame {
   // --- HELPER STAFF ROBIN AUTOMATION ---
   // --- INDEPENDENT STAFF WORKERS AUTOMATION ---
   updateStaffWorkers(dt) {
+    if (this.staffOnStrike) {
+      // All active workers display unpaid strike bubble and pause automation
+      Object.values(this.workers).forEach(worker => {
+        worker.bubble = '💸';
+        worker.bubbleTimer = 1.0;
+        worker.target = null;
+        worker.walkCycle = 0;
+      });
+      return;
+    }
+
     // 1. Front Desk Clerks: Alex (Desk #1) and Sam (Desk #2)
     const queueCampers = this.campers.filter(c => c.state === 'queueing');
 
@@ -4868,7 +2817,7 @@ class Campers2DGame {
 
             window.soundFX?.playCheckin();
             const basePerGuest = pitch.baseIncome ? Math.round(pitch.baseIncome / pitch.capacity) : 15;
-            const fee = (basePerGuest * partySize) + bonusTip;
+            const fee = (Math.max(6, Math.round(basePerGuest * 0.35)) * partySize) + bonusTip;
             this.addCash(fee);
             this.addEventPoints(partySize);
             if (!this.state.stats) this.state.stats = {};
@@ -4881,18 +2830,33 @@ class Campers2DGame {
       }
     });
 
-    // 2. Zone Cleaners: Oliver (Tents), Chloe (Caravans), Felix (Cabins/Domes)
+    // 2. Building-Type Dedicated Cleaners:
+    // - Oliver: ONLY cleans Tents (pup tents, safari tipis, yurt pitches with tier 'tent')
+    // - Chloe: ONLY cleans Caravans (classic caravans, retro buses, RVs with tier 'caravan')
+    // - Felix: ONLY cleans Cabins & Luxury Lodges (glamping domes, chalets, lodges, villas)
     const centerX = Math.round(this.worldW / 2);
     const cleaners = [
-      { id: 'oliver', zoneTest: (item) => item.x <= centerX, defaultPos: { x: centerX - 100, y: Math.round(this.worldH * 0.45) } },
-      { id: 'chloe', zoneTest: (item) => item.x > centerX && item.y >= Math.round(this.worldH * 0.28), defaultPos: { x: centerX + 100, y: Math.round(this.worldH * 0.45) } },
-      { id: 'felix', zoneTest: (item) => item.y < Math.round(this.worldH * 0.28), defaultPos: { x: centerX, y: Math.round(this.worldH * 0.16) } }
+      {
+        id: 'oliver',
+        allowedTiers: ['tent'],
+        defaultPos: { x: centerX - 100, y: Math.round(this.worldH * 0.45) }
+      },
+      {
+        id: 'chloe',
+        allowedTiers: ['caravan'],
+        defaultPos: { x: centerX + 100, y: Math.round(this.worldH * 0.45) }
+      },
+      {
+        id: 'felix',
+        allowedTiers: ['cabin', 'glamping', 'chalet', 'lodge', 'villa'],
+        defaultPos: { x: centerX, y: Math.round(this.worldH * 0.16) }
+      }
     ];
 
-    cleaners.forEach(({ id, zoneTest, defaultPos }) => {
+    cleaners.forEach(({ id, allowedTiers, defaultPos }) => {
       const stateObj = this.state.workers[id];
       if (!stateObj || stateObj.level <= 0) return;
-      if (id === 'felix' && !this.pitches.some(p => p.tier === 'glamping' || p.tier === 'cabin' || p.tier === 'chalet' || p.tier === 'lodge' || p.tier === 'villa')) return;
+      if (!this.pitches.some(p => allowedTiers.includes(p.tier))) return;
       const worker = this.workers[id];
       if (!worker) return;
 
@@ -4903,11 +2867,57 @@ class Campers2DGame {
       const moveSpeed = baseMoveSpeed * staffMult;
       const trashBonus = lvlConfig.bonus || 0;
 
-      let targetCash = this.cashDrops.find(zoneTest) || (this.cashDrops.length > 0 ? this.cashDrops[0] : null);
-      let targetTrash = this.trashBags.find(zoneTest) || (this.trashBags.length > 0 ? this.trashBags[0] : null);
+      const isAllowedItem = (item) => {
+        const itemTier = this.getItemPitchTier(item);
+        return allowedTiers.includes(itemTier);
+      };
 
-      let targetItem = targetCash || targetTrash;
-      let isCash = !!targetCash;
+      // Search exclusively among cash drops belonging to this cleaner's building type
+      let targetCash = null;
+      let minCashDist = Infinity;
+      for (let i = 0; i < this.cashDrops.length; i++) {
+        const cd = this.cashDrops[i];
+        if (isAllowedItem(cd)) {
+          const d = Math.hypot(cd.x - worker.x, cd.y - worker.y);
+          if (d < minCashDist) {
+            minCashDist = d;
+            targetCash = cd;
+          }
+        }
+      }
+
+      // Search exclusively among trash bags belonging to this cleaner's building type
+      let targetTrash = null;
+      let minTrashDist = Infinity;
+      for (let i = 0; i < this.trashBags.length; i++) {
+        const tb = this.trashBags[i];
+        if (isAllowedItem(tb)) {
+          const d = Math.hypot(tb.x - worker.x, tb.y - worker.y);
+          if (d < minTrashDist) {
+            minTrashDist = d;
+            targetTrash = tb;
+          }
+        }
+      }
+
+      // Prioritize nearest allowed item of this cleaner's building type (cash has priority if nearby)
+      let targetItem = null;
+      let isCash = false;
+      if (targetCash && targetTrash) {
+        if (minCashDist <= minTrashDist * 1.25) {
+          targetItem = targetCash;
+          isCash = true;
+        } else {
+          targetItem = targetTrash;
+          isCash = false;
+        }
+      } else if (targetCash) {
+        targetItem = targetCash;
+        isCash = true;
+      } else if (targetTrash) {
+        targetItem = targetTrash;
+        isCash = false;
+      }
 
       if (targetItem) {
         const dx = targetItem.x - worker.x;
@@ -4933,7 +2943,7 @@ class Campers2DGame {
             const idx = this.trashBags.indexOf(targetItem);
             if (idx >= 0) {
               this.trashBags.splice(idx, 1);
-              const reward = 15 + trashBonus;
+              const reward = 25 + trashBonus;
               this.addCash(reward);
               this.addEventPoints(1);
               if (!this.state.stats) this.state.stats = {};
@@ -4944,9 +2954,20 @@ class Campers2DGame {
           }
         }
       } else {
-        const angle = (this.frame * 0.015) + (id === 'oliver' ? 0 : id === 'chloe' ? 2 : 4);
-        const targetX = defaultPos.x + Math.cos(angle) * 22;
-        const targetY = defaultPos.y + Math.sin(angle) * 16;
+        // Idle patrol: patrol exclusively around pitches of their designated building type
+        const myPitches = this.pitches.filter(p => allowedTiers.includes(p.tier));
+        let patrolX = defaultPos.x;
+        let patrolY = defaultPos.y;
+        if (myPitches.length > 0) {
+          const pIdx = Math.floor((this.frame * 0.004 + (id === 'oliver' ? 0 : id === 'chloe' ? 1 : 2)) % myPitches.length);
+          const activePitch = myPitches[pIdx];
+          patrolX = activePitch.dropX ?? activePitch.x;
+          patrolY = (activePitch.dropY ?? activePitch.y) + 8;
+        }
+
+        const angle = (this.frame * 0.018) + (id === 'oliver' ? 0 : id === 'chloe' ? 2 : 4);
+        const targetX = patrolX + Math.cos(angle) * 18;
+        const targetY = patrolY + Math.sin(angle) * 12;
         const dx = targetX - worker.x;
         const dy = targetY - worker.y;
         if (Math.hypot(dx, dy) > 2) {
@@ -5090,26 +3111,9 @@ class Campers2DGame {
     }
   }
 
-  showFloatText(worldX, worldY, text, color = '#2ecc71') {
-    this.floatTexts.push({
-      x: worldX,
-      y: worldY,
-      text,
-      color,
-      life: 1.0
-    });
-  }
+  showFloatText(x, y, text, color = '#2ecc71') { this.hud.showFloatText(x, y, text, color); }
+  updateFloatTexts(dt) { this.hud.updateFloatTexts(dt); }
 
-  updateFloatTexts(dt) {
-    for (let i = this.floatTexts.length - 1; i >= 0; i--) {
-      const ft = this.floatTexts[i];
-      ft.y -= 22 * dt;
-      ft.life -= dt * 1.2;
-      if (ft.life <= 0) this.floatTexts.splice(i, 1);
-    }
-  }
-
-  // --- RENDER 2D PIXEL ART WORLD ---
   render() {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.vWidth, this.vHeight);
@@ -5200,26 +3204,64 @@ class Campers2DGame {
 
     if (this.hasWaterPump) {
       PixelRenderer.drawWaterPump(ctx, this.waterPos.x, this.waterPos.y);
+      const waterLvl = this.state.buildingLevels?.['pad_water'] || 1;
+      ctx.save();
+      ctx.fillStyle = 'rgba(41, 128, 185, 0.9)';
+      ctx.fillRect(this.waterPos.x - 14, this.waterPos.y - 24, 28, 8);
+      ctx.strokeStyle = '#111';
+      ctx.strokeRect(this.waterPos.x - 14, this.waterPos.y - 24, 28, 8);
+      ctx.fillStyle = '#f1c40f';
+      ctx.font = 'bold 6px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`★ Lv.${waterLvl}`, this.waterPos.x, this.waterPos.y - 18);
+      ctx.restore();
     }
     if (this.hasGenerator) {
       PixelRenderer.drawGenerator(ctx, this.genPos.x, this.genPos.y, this.frame);
+      const genLvl = this.state.buildingLevels?.['pad_gen'] || 1;
+      ctx.save();
+      ctx.fillStyle = 'rgba(41, 128, 185, 0.9)';
+      ctx.fillRect(this.genPos.x - 14, this.genPos.y - 24, 28, 8);
+      ctx.strokeStyle = '#111';
+      ctx.strokeRect(this.genPos.x - 14, this.genPos.y - 24, 28, 8);
+      ctx.fillStyle = '#f1c40f';
+      ctx.font = 'bold 6px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`★ Lv.${genLvl}`, this.genPos.x, this.genPos.y - 18);
+      ctx.restore();
     }
     if (this.hasKiosk) {
       PixelRenderer.drawKiosk(ctx, this.kioskPos.x, this.kioskPos.y, this.frame);
+      const kioskLvl = this.state.buildingLevels?.['pad_kiosk'] || 1;
+      ctx.save();
+      ctx.fillStyle = 'rgba(41, 128, 185, 0.9)';
+      ctx.fillRect(this.kioskPos.x - 14, this.kioskPos.y - 24, 28, 8);
+      ctx.strokeStyle = '#111';
+      ctx.strokeRect(this.kioskPos.x - 14, this.kioskPos.y - 24, 28, 8);
+      ctx.fillStyle = '#f1c40f';
+      ctx.font = 'bold 6px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`★ Lv.${kioskLvl}`, this.kioskPos.x, this.kioskPos.y - 18);
+      ctx.restore();
     }
     if (this.hasSportsField) {
       PixelRenderer.drawSportsField(ctx, this.sportsFieldPos.x, this.sportsFieldPos.y);
+      const sportsLvl = this.state.buildingLevels?.['pad_sports'] || 1;
+      ctx.save();
+      ctx.fillStyle = 'rgba(41, 128, 185, 0.9)';
+      ctx.fillRect(this.sportsFieldPos.x - 14, this.sportsFieldPos.y - 24, 28, 8);
+      ctx.strokeStyle = '#111';
+      ctx.strokeRect(this.sportsFieldPos.x - 14, this.sportsFieldPos.y - 24, 28, 8);
+      ctx.fillStyle = '#f1c40f';
+      ctx.font = 'bold 6px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`★ Lv.${sportsLvl}`, this.sportsFieldPos.x, this.sportsFieldPos.y - 18);
+      ctx.restore();
     }
 
-    // 5. Accommodations / Pitches (Drawn with occupancy badges)
+    // 5. Accommodations / Pitches (Drawn with regional architecture and occupancy badges)
     this.pitches.forEach(p => {
-      if (p.tier === 'tent') PixelRenderer.drawPupTent(ctx, p.x, p.y);
-      if (p.tier === 'caravan') PixelRenderer.drawCaravan(ctx, p.x, p.y);
-      if (p.tier === 'glamping') PixelRenderer.drawGlampingDome(ctx, p.x, p.y);
-      if (p.tier === 'cabin') PixelRenderer.drawLogCabin(ctx, p.x, p.y);
-      if (p.tier === 'chalet') PixelRenderer.drawChalet(ctx, p.x, p.y);
-      if (p.tier === 'lodge') PixelRenderer.drawLodge(ctx, p.x, p.y);
-      if (p.tier === 'villa') PixelRenderer.drawVilla(ctx, p.x, p.y);
+      PixelRenderer.drawPitch(ctx, p.x, p.y, p.tier, this.accommodationStyle || 'classic', this.frame, pal);
 
       // Pitch Occupancy Badge (e.g. 👥 2/2 or 🟢 0/3)
       ctx.save();
@@ -5234,6 +3276,15 @@ class Campers2DGame {
       ctx.font = 'bold 6px monospace';
       ctx.textAlign = 'center';
       ctx.fillText(`${p.guests.length}/${p.capacity} beds`, p.x, p.y - 21);
+
+      // Pitch Level Badge
+      const lvl = p.level || 1;
+      ctx.fillStyle = 'rgba(41, 128, 185, 0.9)';
+      ctx.fillRect(p.x - 14, p.y - 39, 28, 9);
+      ctx.strokeStyle = '#111';
+      ctx.strokeRect(p.x - 14, p.y - 39, 28, 9);
+      ctx.fillStyle = '#f1c40f';
+      ctx.fillText(`★ Lv.${lvl}`, p.x, p.y - 32);
       ctx.restore();
     });
 
@@ -5271,6 +3322,45 @@ class Campers2DGame {
       ctx.textAlign = 'center';
       ctx.fillText(`$${Math.ceil(pad.cost - pad.paid)}`, 0, -2);
       ctx.fillText(pad.name, 0, 6);
+
+      ctx.restore();
+    });
+
+    // 6b. Stand-to-Pay Upgrade Pads (Blue / Gold Ring with Star)
+    this.upgradePads.forEach(pad => {
+      ctx.save();
+      ctx.translate(pad.x, pad.y);
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.beginPath();
+      ctx.arc(0, 0, pad.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Outer dashed cyan/blue ring
+      ctx.strokeStyle = '#3498db';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.lineDashOffset = -this.frame * 0.4;
+      ctx.beginPath();
+      ctx.arc(0, 0, pad.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Fill progress disc
+      const progress = pad.paid / pad.cost;
+      if (progress > 0) {
+        ctx.fillStyle = 'rgba(52, 152, 219, 0.65)';
+        ctx.beginPath();
+        ctx.arc(0, 0, pad.radius * progress, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 6px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`$${Math.ceil(pad.cost - pad.paid)}`, 0, -2);
+      ctx.fillStyle = '#f1c40f';
+      ctx.fillText(`★ Lv.${pad.targetLevel}`, 0, 6);
 
       ctx.restore();
     });
@@ -5375,6 +3465,7 @@ class Campers2DGame {
         crates: this.state.crates,
         eventProgress: this.state.eventProgress,
         camps: this.state.camps,
+        buildingLevels: this.state.buildingLevels,
         lastTimestamp: Date.now()
       }));
     } catch (e) {
@@ -5437,6 +3528,7 @@ class Campers2DGame {
         this.completedPads = new Set(curCampData.completedPads || []);
         this.state.achievements = JSON.parse(JSON.stringify(curCampData.achievements || {}));
         this.state.stats = JSON.parse(JSON.stringify(curCampData.stats || {}));
+        this.state.buildingLevels = JSON.parse(JSON.stringify(curCampData.buildingLevels || { tent_1: 1, caravan_1: 1 }));
         this.hasWaterPump = !!curCampData.hasWaterPump;
         this.hasGenerator = !!curCampData.hasGenerator;
         this.hasKiosk = !!curCampData.hasKiosk;
@@ -5448,6 +3540,7 @@ class Campers2DGame {
         this.completedPads = new Set(p.completedPads || []);
         this.state.achievements = p.achievements || {};
         this.state.stats = p.stats || {};
+        this.state.buildingLevels = p.buildingLevels || { tent_1: 1, caravan_1: 1 };
         this.hasWaterPump = !!p.hasWaterPump;
         this.hasGenerator = !!p.hasGenerator;
         this.hasKiosk = !!p.hasKiosk;

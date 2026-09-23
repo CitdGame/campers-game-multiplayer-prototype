@@ -1,0 +1,402 @@
+/* Crate Unboxing Modal Overlay */
+    .crate-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 25, 15, 0.85);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+    .crate-modal-card {
+      background: #fffbe6;
+      border: 4px solid #142819;
+      border-radius: 12px;
+      box-shadow: 0 10px 0 #142819;
+      width: 100%;
+      max-width: 360px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      animation: modalPopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes modalPopIn {
+      0% { transform: scale(0.6); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .crate-modal-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      color: #1b4329;
+      text-align: center;
+      letter-spacing: 0.5px;
+    }
+    .crate-box-anim {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 24px 0;
+      cursor: pointer;
+    }
+    .crate-emoji-bounce {
+      font-size: 72px;
+      animation: chestWobble 0.9s infinite ease-in-out;
+    }
+    @keyframes chestWobble {
+      0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+      25% { transform: translateY(-8px) rotate(-6deg) scale(1.08); }
+      75% { transform: translateY(-8px) rotate(6deg) scale(1.08); }
+    }
+    .crate-instruction {
+      font-size: 13px;
+      font-weight: 700;
+      color: #e67e22;
+      animation: pulseOpacity 1s infinite alternate;
+    }
+    @keyframes pulseOpacity {
+      from { opacity: 0.6; }
+      to { opacity: 1; }
+    }
+    .crate-rewards-container {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .rewards-cards-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      max-height: 240px;
+      overflow-y: auto;
+      padding: 4px;
+    }
+    .revealed-card {
+      background: white;
+      border: 3px solid #142819;
+      border-radius: 8px;
+      padding: 8px 10px;
+      box-shadow: 0 3px 0 #142819;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      min-width: 90px;
+      animation: cardFlipIn 0.35s ease-out;
+    }
+    @keyframes cardFlipIn {
+      0% { transform: scale(0.2) rotateY(90deg); opacity: 0; }
+      100% { transform: scale(1) rotateY(0deg); opacity: 1; }
+    }
+    .revealed-card.common { border-color: #cd7f32; }
+    .revealed-card.rare { border-color: #3498db; }
+    .revealed-card.epic { border-color: #9b59b6; }
+    .revealed-icon { font-size: 26px; }
+    .revealed-name { font-size: 11px; font-weight: 700; text-align: center; color: #2c3e50; }
+    .revealed-count { font-size: 12px; font-weight: 800; color: #27ae60; }
+    .revealed-meter { font-size: 9px; color: #7f8c8d; }
+
+    .reward-cash-banner {
+      background: #e8f8f5;
+      border: 2px solid #27ae60;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #27ae60;
+      text-align: center;
+      box-shadow: 0 2px 0 #1e8449;
+    }
+    .btn-collect-loot {
+      background: #27ae60;
+      color: white;
+      border: 3px solid #142819;
+      border-radius: 6px;
+      box-shadow: 0 4px 0 #142819;
+      font-family: 'Pixelify Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 10px 24px;
+      cursor: pointer;
+      width: 100%;
+      transition: transform 0.05s;
+    }
+    .btn-collect-loot:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #142819;
+    }
+
+    /* Progression HUD & World Modal */
+    .hud-pill.world-level {
+      background: #fdfefe;
+      border-color: #2980b9;
+      color: #1b4f72;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      transition: transform 0.05s;
+    }
+    .hud-pill.world-level:active {
+      transform: translateY(2px);
+    }
+    .hud-pill.world-level.unlock-ready {
+      background: #fef9e7;
+      border-color: #f39c12;
+      color: #7d3c98;
+      animation: pulseBtn 1.2s infinite;
+    }
+
+    .hud-pill.empire-idle {
+      background: #fef9e7;
+      border-color: #f39c12;
+      color: #b7950b;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      transition: transform 0.05s;
+    }
+    .hud-pill.empire-idle:active {
+      transform: translateY(2px);
+    }
+
+    .camp-item-card {
+      background: white;
+      border: 2px solid #142819;
+      border-radius: 6px;
+      padding: 7px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 0 #142819;
+    }
+    .camp-item-card.active-resort {
+      background: #e8f8f5;
+      border-color: #27ae60;
+    }
+    .btn-camp-visit {
+      background: #3498db;
+      color: white;
+      border: var(--pixel-border);
+      border-radius: 4px;
+      box-shadow: 0 2px 0 #142819;
+      font-family: 'Pixelify Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.05s;
+    }
+    .btn-camp-visit:active {
+      transform: translateY(2px);
+      box-shadow: none;
+    }
+    .btn-camp-visit.current {
+      background: #27ae60;
+      cursor: default;
+    }
+
+    /* Next Camp Promotion Banner */
+    .camp-complete-banner {
+      background: linear-gradient(135deg, #f1c40f, #e67e22);
+      color: #142819;
+      font-family: 'Pixelify Sans', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 3px solid #142819;
+      box-shadow: 0 4px 0 #142819;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      pointer-events: auto;
+      animation: pulseBtn 1.2s infinite;
+    }
+
+
+    /* World Map Modal */
+    .world-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 25, 15, 0.85);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+    .world-modal-card {
+      background: #fffbe6;
+      border: 4px solid #142819;
+      border-radius: 12px;
+      box-shadow: 0 10px 0 #142819;
+      width: 100%;
+      max-width: 420px;
+      max-height: 85vh;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-sizing: border-box;
+      overflow-y: auto;
+      animation: modalPopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .world-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px dashed #142819;
+      padding-bottom: 8px;
+    }
+    .world-modal-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      color: #1b4329;
+    }
+    .world-stat-box {
+      background: white;
+      border: 2px solid #142819;
+      border-radius: 6px;
+      padding: 10px;
+      box-shadow: 0 2px 0 #142819;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .world-level-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .camp-node {
+      background: #eaeded;
+      border: 2px solid #bdc3c7;
+      border-radius: 6px;
+      padding: 6px 2px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: bold;
+      color: #7f8c8d;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .camp-node.cleared {
+      background: #d4efdf;
+      border-color: #27ae60;
+      color: #196f3d;
+    }
+    .camp-node.current {
+      background: #fef9e7;
+      border-color: #f39c12;
+      color: #b7950b;
+      box-shadow: 0 0 8px rgba(243, 156, 18, 0.6);
+      transform: scale(1.05);
+    }
+    .btn-advance-camp {
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+      color: white;
+      border: 3px solid #142819;
+      border-radius: 8px;
+      box-shadow: 0 4px 0 #142819;
+      font-family: 'Pixelify Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 10px 16px;
+      cursor: pointer;
+      width: 100%;
+      text-align: center;
+      transition: transform 0.05s;
+    }
+    .btn-advance-camp:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #142819;
+    }
+
+
+    /* === SONDEREVENTS MODAL === */
+    .events-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 25, 15, 0.85);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+    .events-modal-card {
+      background: #fffbe6;
+      border: 4px solid #142819;
+      border-radius: 12px;
+      box-shadow: 0 8px 0 #142819;
+      width: 100%;
+      max-width: 440px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: modalPopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* === MODALS MOBILE RESPONSIVE (<= 600px) === */
+    @media (max-width: 600px) {
+      .crate-modal-overlay,
+      .world-modal-overlay,
+      .events-modal-overlay {
+        padding: calc(10px + var(--safe-top)) 10px calc(14px + var(--safe-bottom));
+      }
+
+      .crate-modal-card,
+      .world-modal-card,
+      .events-modal-card {
+        width: 100%;
+        max-width: 100%;
+        max-height: min(88dvh, 88vh);
+        padding: 14px 12px;
+        border-width: 3px;
+        box-shadow: 0 6px 0 #142819;
+      }
+
+      .crate-emoji-bounce {
+        font-size: 56px;
+      }
+
+      .btn-collect-loot,
+      .btn-advance-camp {
+        min-height: 44px;
+        padding: 10px 16px;
+        font-size: 14px;
+      }
+
+      .world-level-grid {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px;
+      }
+
+      .camp-node {
+        padding: 4px 1px;
+        font-size: 10px;
+      }
+    }
