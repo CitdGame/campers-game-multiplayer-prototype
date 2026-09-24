@@ -1,6 +1,20 @@
 // HUDController: Top HUD Stats, Badges, Overlays, and Floating Texts
 import { MANAGER_DEFS, MANAGER_PREREQS } from '../config/managers.js';
 
+export function formatCompactNumber(num, prefix = '') {
+  const val = Number(num) || 0;
+  const abs = Math.abs(val);
+  if (abs < 100000) {
+    return prefix + Math.floor(val).toLocaleString();
+  }
+  const suffixes = ['', 'K', 'M', 'B', 'T', 'q', 'Q'];
+  const exp = Math.min(Math.floor(Math.log10(abs) / 3), suffixes.length - 1);
+  const scaled = val / Math.pow(10, exp * 3);
+  const suffix = suffixes[exp];
+  const formatted = Math.abs(scaled) < 10 ? scaled.toFixed(2) : (Math.abs(scaled) < 100 ? scaled.toFixed(1) : scaled.toFixed(0));
+  return prefix + formatted + suffix;
+}
+
 export class HUDController {
   constructor(game) {
     this.game = game;
@@ -71,13 +85,19 @@ export class HUDController {
       this.claimGoalToast(ach.id);
     });
 
+    // Limit active visible toasts to max 2 to prevent screen overflow
+    if (this.activeGoalToasts.size >= 2) {
+      const oldestId = this.activeGoalToasts.keys().next().value;
+      if (oldestId) this.dismissGoalToast(oldestId);
+    }
+
     container.appendChild(toast);
     window.soundFX?.playCheckin();
 
-    // Keep popup for 20 seconds before auto-dismissing
+    // Keep popup for 12 seconds before auto-dismissing
     const timer = setTimeout(() => {
       this.dismissGoalToast(ach.id);
-    }, 20000);
+    }, 12000);
 
     this.activeGoalToasts.set(ach.id, { element: toast, timer, ach });
   }
@@ -187,7 +207,7 @@ export class HUDController {
     const totCap = this.game.getTotalCapacity();
 
     if (this.ui?.cash) {
-      this.ui.cash.textContent = `$${Math.floor(this.state.cash)}`;
+      this.ui.cash.textContent = formatCompactNumber(this.state.cash, '$');
       if (this.ui.cash.parentElement) {
         this.ui.cash.parentElement.classList.toggle('strike', !!this.game.staffOnStrike);
         this.ui.cash.parentElement.title = this.game.staffOnStrike ?
@@ -209,11 +229,11 @@ export class HUDController {
     }
 
     if (this.ui?.hudGems) {
-      this.ui.hudGems.textContent = Math.floor(this.state.gems || 0).toLocaleString();
+      this.ui.hudGems.textContent = formatCompactNumber(this.state.gems || 0);
     }
 
     if (this.ui?.hudVault) {
-      this.ui.hudVault.textContent = '$' + Math.floor(this.state.empireGold || 0).toLocaleString();
+      this.ui.hudVault.textContent = formatCompactNumber(this.state.empireGold || 0, '$');
     }
 
     // Active Revenue Boost Banner

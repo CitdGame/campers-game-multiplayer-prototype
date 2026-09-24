@@ -1,6 +1,6 @@
 /* Campers: Pocket Resort (2D Pixel Edition) Stylesheets */
-@import url('./base.css');
-@import url('./hud.css');
-@import url('./drawer.css');
-@import url('./modals.css');
-@import url('./main-menu.css');
+@import url('./base.css?v=4');
+@import url('./hud.css?v=4');
+@import url('./drawer.css?v=4');
+@import url('./modals.css?v=4');
+@import url('./main-menu.css?v=4');

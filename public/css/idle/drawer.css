@@ -69,16 +69,18 @@
       margin-bottom: 8px;
       overflow-x: auto;
       scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
       touch-action: pan-x;
     }
     .main-tabs::-webkit-scrollbar { display: none; }
 
     .main-tab-btn {
-      flex: 1;
+      flex: 1 1 auto;
+      min-width: max-content;
       background: #fff;
       border: 2px solid #142819;
       border-radius: 5px;
-      padding: 6px 4px;
+      padding: 6px 8px;
       font-family: 'Pixelify Sans', sans-serif;
       font-size: 12px;
       font-weight: 700;

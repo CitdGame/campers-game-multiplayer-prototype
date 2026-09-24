@@ -17,6 +17,10 @@
       box-shadow: 0 10px 0 #142819;
       width: 100%;
       max-width: 360px;
+      max-height: min(90dvh, 90vh);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      box-sizing: border-box;
       padding: 18px;
       display: flex;
       flex-direction: column;
@@ -364,13 +368,15 @@
     @media (max-width: 600px) {
       .crate-modal-overlay,
       .world-modal-overlay,
-      .events-modal-overlay {
+      .events-modal-overlay,
+      .offline-modal-overlay {
         padding: calc(10px + var(--safe-top)) 10px calc(14px + var(--safe-bottom));
       }
 
       .crate-modal-card,
       .world-modal-card,
-      .events-modal-card {
+      .events-modal-card,
+      .offline-modal-card {
         width: 100%;
         max-width: 100%;
         max-height: min(88dvh, 88vh);
@@ -384,7 +390,9 @@
       }
 
       .btn-collect-loot,
-      .btn-advance-camp {
+      .btn-advance-camp,
+      .btn-offline-claim,
+      .btn-offline-double {
         min-height: 44px;
         padding: 10px 16px;
         font-size: 14px;
@@ -421,6 +429,10 @@
   box-shadow: 0 10px 0 #142819;
   width: 100%;
   max-width: 360px;
+  max-height: min(90dvh, 90vh);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
   padding: 18px;
   display: flex;
   flex-direction: column;

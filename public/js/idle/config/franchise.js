@@ -22,7 +22,7 @@ export const FRANCHISE_UPGRADE_DEFS = {
     id: 'invest_speed',
     name: 'Fast Investor',
     icon: '💸',
-    maxLevel: 10,
+    maxLevel: 100,
     costFormula: (lvl) => Math.round(45 * Math.pow(1.65, lvl - 1)),
     desc: 'Pours cash into build pads 50% faster per level',
     getStat: (lvl) => `+${(lvl - 1) * 50}% speed`

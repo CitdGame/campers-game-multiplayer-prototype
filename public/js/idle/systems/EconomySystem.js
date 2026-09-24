@@ -68,7 +68,7 @@ export class EconomySystem {
 
     if (id === 'invest_speed') {
       const curLvl = upg.investSpeedLevel || 1;
-      if (curLvl >= 10) return;
+      if (curLvl >= 100) return;
       const cost = Math.round(45 * Math.pow(1.65, curLvl - 1));
       if (!this.game.spendEmpireGold(cost)) {
         this.game.showFloatText(this.game.player.x, this.game.player.y - 12, '🏛️ Not enough Empire Gold!', '#e74c3c');
@@ -289,7 +289,7 @@ export class EconomySystem {
   // --- CLAIM ACHIEVEMENT ---
   claimAchievement(achId) {
     if (!this.state.achievements) this.state.achievements = {};
-    
+
     // Normalize state for this achievement so it can be claimed even if previously undefined
     if (typeof this.state.achievements[achId] === 'boolean') {
       this.state.achievements[achId] = { claimed: this.state.achievements[achId] };

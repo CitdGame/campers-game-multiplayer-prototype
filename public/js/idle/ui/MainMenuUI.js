@@ -1,5 +1,6 @@
 // MainMenuUI: Primary Hub Screen, Regional Trail (Pfad der 10 Camps), and Navigation
 import { WORLD_BIOMES, getCampKey, getCampSizeInfo, getEarthRegionDef } from '../config/worlds.js';
+import { formatCompactNumber } from './HUDController.js';
 
 export class MainMenuUI {
   constructor(game) {
@@ -64,9 +65,9 @@ export class MainMenuUI {
     if (!this.ui?.mainMenu || !this.isMainMenuOpen) return;
     const otherRate = this.game.getTotalOtherCampsIdleRate();
 
-    if (this.ui.menuCash) this.ui.menuCash.textContent = `$${Math.floor(this.state.cash || 0).toLocaleString()}`;
-    if (this.ui.menuVault) this.ui.menuVault.textContent = `$${Math.floor(this.state.empireGold || 0).toLocaleString()}`;
-    if (this.ui.menuGems) this.ui.menuGems.textContent = Math.floor(this.state.gems || 0).toLocaleString();
+    if (this.ui.menuCash) this.ui.menuCash.textContent = formatCompactNumber(this.state.cash || 0, '$');
+    if (this.ui.menuVault) this.ui.menuVault.textContent = formatCompactNumber(this.state.empireGold || 0, '$');
+    if (this.ui.menuGems) this.ui.menuGems.textContent = formatCompactNumber(this.state.gems || 0);
     if (this.ui.menuIdleRate) {
       if (this.ui.menuEmpireIdle) this.ui.menuEmpireIdle.style.display = otherRate > 0 ? 'flex' : 'none';
       this.ui.menuIdleRate.textContent = `+$${otherRate.toFixed(1)}/s`;

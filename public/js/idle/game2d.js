@@ -2117,8 +2117,7 @@ class Campers2DGame {
     this.player.x = this.receptionPos.x;
     this.player.y = this.receptionPos.y + 40;
     this.player.carriedItems = 0;
-    this.camX = Math.max(0, Math.min(this.worldW - this.vWidth, this.player.x - this.vWidth / 2));
-    this.camY = Math.max(0, Math.min(this.worldH - this.vHeight, this.player.y - this.vHeight / 2));
+    this.snapCameraToPlayer();
 
     // 5. Spawn active managers for this camp
     Object.keys(this.state.managers).forEach(id => {
@@ -2372,22 +2371,52 @@ class Campers2DGame {
   }
 
   updateCamera() {
-    const targetX = this.player.x - this.vWidth / 2;
-    const targetY = this.player.y - this.vHeight / 2;
-    this.camX += (targetX - this.camX) * 0.12;
-    this.camY += (targetY - this.camY) * 0.12;
+    const curZoom = this.zoom || 1.0;
+    const effW = this.vWidth / curZoom;
+    const effH = this.vHeight / curZoom;
 
-    if (this.worldW <= this.vWidth) {
-      this.camX = (this.worldW - this.vWidth) / 2;
+    let targetCenterX;
+    if (effW >= this.worldW) {
+      targetCenterX = this.worldW / 2;
     } else {
-      this.camX = Math.max(0, Math.min(this.worldW - this.vWidth, this.camX));
+      targetCenterX = Math.max(effW / 2, Math.min(this.worldW - effW / 2, this.player.x));
     }
 
-    if (this.worldH <= this.vHeight) {
-      this.camY = (this.worldH - this.vHeight) / 2;
+    let targetCenterY;
+    if (effH >= this.worldH) {
+      targetCenterY = this.worldH / 2;
     } else {
-      this.camY = Math.max(0, Math.min(this.worldH - this.vHeight, this.camY));
+      targetCenterY = Math.max(effH / 2, Math.min(this.worldH - effH / 2, this.player.y));
     }
+
+    const targetCamX = targetCenterX - this.vWidth / 2;
+    const targetCamY = targetCenterY - this.vHeight / 2;
+
+    this.camX += (targetCamX - this.camX) * 0.12;
+    this.camY += (targetCamY - this.camY) * 0.12;
+  }
+
+  snapCameraToPlayer() {
+    const curZoom = this.zoom || 1.0;
+    const effW = this.vWidth / curZoom;
+    const effH = this.vHeight / curZoom;
+
+    let targetCenterX;
+    if (effW >= this.worldW) {
+      targetCenterX = this.worldW / 2;
+    } else {
+      targetCenterX = Math.max(effW / 2, Math.min(this.worldW - effW / 2, this.player.x));
+    }
+
+    let targetCenterY;
+    if (effH >= this.worldH) {
+      targetCenterY = this.worldH / 2;
+    } else {
+      targetCenterY = Math.max(effH / 2, Math.min(this.worldH - effH / 2, this.player.y));
+    }
+
+    this.camX = targetCenterX - this.vWidth / 2;
+    this.camY = targetCenterY - this.vHeight / 2;
   }
 
   // --- RECEPTION & MULTI-GUEST CHECK-IN ---
@@ -3558,10 +3587,23 @@ class Campers2DGame {
     // Offset by camera
     ctx.translate(-Math.floor(this.camX), -Math.floor(this.camY));
 
-    // 1. Lush Biome Meadow & Palette
+    // 0. Wilderness Forest Backdrop (seamless fill beyond campsite edges to prevent voids)
     const biome = this.currentBiome || WORLD_BIOMES[0];
     const pal = biome.palette;
+    const bgPad = 600;
+    ctx.fillStyle = pal.grassDark || '#142819';
+    ctx.fillRect(-bgPad, -bgPad, this.worldW + bgPad * 2, this.worldH + bgPad * 2);
 
+    // Subtle wilderness tree silhouettes in the outer area
+    ctx.fillStyle = 'rgba(10, 25, 15, 0.35)';
+    for (let bx = -bgPad + 20; bx < this.worldW + bgPad; bx += 36) {
+      ctx.fillRect(bx, -35, 6, 12);
+      ctx.fillRect(bx + 18, -65, 6, 12);
+      ctx.fillRect(bx, this.worldH + 25, 6, 12);
+      ctx.fillRect(bx + 18, this.worldH + 55, 6, 12);
+    }
+
+    // 1. Lush Biome Meadow & Palette
     ctx.fillStyle = pal.grassMid || PIXEL_COLORS.grassMid;
     ctx.fillRect(0, 0, this.worldW, this.worldH);
 
