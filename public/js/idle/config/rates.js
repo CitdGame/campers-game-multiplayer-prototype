@@ -61,6 +61,18 @@ export function calculateCampActiveRate(campData) {
     totalRate += bVal * (1.0 + campProg * 0.25);
   }
 
+  // Canoe Rental Dock
+  if (campData.hasCanoeDock) {
+    const canoeLvl = campData.buildingLevels?.['pad_canoe'] || 1;
+    totalRate += (3.5 * incomeMult) * (1.0 + (canoeLvl - 1) * 0.25);
+  }
+
+  // Alpine Sauna & Hot Springs
+  if (campData.hasSauna && campData.hasWaterPump) {
+    const saunaLvl = campData.buildingLevels?.['pad_sauna'] || 1;
+    totalRate += (6.5 * incomeMult) * (1.0 + (saunaLvl - 1) * 0.25);
+  }
+
   // Robin (Campfire Joy Frenzy boost)
   if (mgrs.robin?.level > 0) {
     const boost = 1.0 + 0.18 * mgrs.robin.level;

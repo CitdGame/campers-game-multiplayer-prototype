@@ -1,7 +1,7 @@
 # Game Design Document – *Campers: Pocket Resort* (2D Pixel Art Edition)
 
-> **Version:** 5.0.0  
-> **Status:** Active Development – Building Upgrade System Live, Economy Balancing Active  
+> **Version:** 5.1.0  
+> **Status:** Active Development – Live Events & Offline Earnings Modal Implemented  
 > **Target Platforms:** Mobile (iOS / Android Web / PWA, Native Wrapper via Capacitor)  
 > **Orientation:** Portrait (9:16 to 20:9 Mobile Screen Ratio)  
 > **Genre:** 2D Top-Down Arcade Idle / Cozy Camp Tycoon (*Stardew Valley*, *Pokémon GBA*, *Kairosoft* style)  
@@ -140,7 +140,9 @@ Up to **13 pitches** per camp, unlocked progressively via build pads as the camp
 |---|---|---|---|
 | **Water Well** 💧 | $65 | Always available | +5 m³/s water capacity base; +1 m³ per upgrade level |
 | **Generator** ⚡ | $85 | Always available | +11 kW power capacity base; +3 kW per upgrade level |
-| **Snack Kiosk** 🏪 | $70 | Always available | Generates $22 × `getBuildingIncomeMultiplier(kioskLvl)` per 100 frames |
+| **Snack Kiosk** 🏪 | $70 | Always available | Generates $22 × `getBuildingIncomeMultiplier(kioskLvl)` per visit |
+| **Canoe Rental Dock** 🛶 | $95 | Camp 2+ | Generates $35 × `getBuildingIncomeMultiplier(canoeLvl)` per visit |
+| **Alpine Sauna & Onsen** ♨️ | $180 | Camp 4+ | Requires 2 Water load; generates $55 × `getBuildingIncomeMultiplier(saunaLvl)` |
 | **Sports Field** ⚽ | $130 | Camp 5+ | Guest satisfaction bonus; upgradeable |
 | **Robin's Cards** 🪵 | $75 | Always available | One-time pad: grants +3 Epic Robin Cards on completion |
 
@@ -150,8 +152,10 @@ Up to **13 pitches** per camp, unlocked progressively via build pads as the camp
 ### 4.3 Amenities & Activities
 
 - **Central Campfire:** Gathering point for Hippies; produces **+50% income (Joy Frenzy)** for all pitches when stocked with firewood.
-- **Snack Kiosk:** Scaled by kiosk upgrade level — revenue is `22 × getBuildingIncomeMultiplier(kioskLvl)` per visit.
-- **Fishing Pond Pier:** Player walks to the pier to catch fish ($40/catch at 1.8s); Finn automates this.
+- **Snack Kiosk:** Scaled by kiosk upgrade level — revenue is `$22 × getBuildingIncomeMultiplier(kioskLvl)` per sale; automated by Bella.
+- **Canoe Rental Dock:** Moored alongside pond; tourists rent canoes generating `$35 × getBuildingIncomeMultiplier(canoeLvl)`.
+- **Alpine Sauna & Onsen:** Steaming hot spring bath requiring water grid connection; visitors pay `$55 × getBuildingIncomeMultiplier(saunaLvl)`.
+- **Fishing Pond Pier:** Player walks to the pier to catch fish ($40/catch at 1.8s); automated by Finn.
 
 ---
 
@@ -221,7 +225,9 @@ Base costs per building type:
 | Water Well | $60 |
 | Generator | $75 |
 | Snack Kiosk | $65 |
+| Canoe Rental Dock | $85 |
 | Sports Field | $120 |
+| Alpine Sauna | $140 |
 
 **Example:** Upgrading Tent #1 to Level 10 costs approx. **$1,712 total**.
 
@@ -675,21 +681,21 @@ Limited-time **Special Events** run on a fixed schedule and layer additional obj
 - ✅ Building upgrade throughput bonus in active rate: +10% per total upgrade level, capped at +1,500%.
 - ✅ Building upgrade achievement goals: `pitch_upgrade` and `resort_rating`.
 
-### Phase 5: Polish, Audio & Mobile Feel 🔄 In Progress
+### Phase 5: Polish, Audio & Mobile Feel ✅ Implemented
 
 - ✅ Campfire smoke particles, floating coin/text effects.
-- ✅ Sound FX (coin pickup, check-in chime, build pop, overload alert, fanfare, chest open).
-- 🔄 Offline earnings calculator when reopening the game.
-- ⬜ Pinch-to-zoom camera.
-- ⬜ Haptic feedback on mobile (item pickup, build completion).
-- ⬜ Ambient soundscape (birds, crackling fire, UI taps).
+- ✅ Sound FX (coin pickup, check-in chime, build pop, overload alert, fanfare, chest open, camera flash, scurry).
+- ✅ **Offline earnings calculator & Welcome Back Modal** (calculates active camp cash & empire vault gold up to 8h, with 2× Gem double claim).
+- ✅ **Haptic feedback** on mobile devices (`navigator.vibrate` on cash pickup, build, raccoon chase, VIP arrival).
+- ✅ **Pinch-to-zoom camera** (smooth two-finger touch gesture on mobile & mouse wheel on desktop, viewport centered zoom 0.65×–1.6×).
+- ✅ **Ambient soundscape** (procedural bird chirps in trees, crackling campfire audio, pond water splashes, woody UI taps).
 
-### Phase 6: Missing Gameplay Features ⬜ Planned
+### Phase 6: Live Encounters & Resort Amenities ✅ Implemented
 
-- ⬜ Camper type-preference matching at reception (Hippie → Tent, Snob → Glamping).
-- ⬜ Non-blocking queue dispatch (parties behind can pass if their pitch type is free).
-- ⬜ Speech bubbles over arriving campers showing desired accommodation emoji.
-- ⬜ Trash Bag item loop (vacated pitches drop trash; cleaner workers collect).
-- ⬜ Trash Raccoon 🦝 random event (chase away for loot bag).
-- ⬜ VIP Influencer 🤳 event (60s resort-wide 2× income multiplier).
-- ⬜ Sauna, Hot Springs, and Canoe Rental Dock amenities.
+- ✅ **Camper type-preference matching** at reception (Hippie → Tent, Snob → Glamping, Family → Caravan/Cabin).
+- ✅ **Non-blocking queue dispatch** (parties behind can pass if their requested pitch type is free).
+- ✅ **Speech bubbles** over arriving campers showing desired accommodation emoji.
+- ✅ **Trash Bag item loop** (vacated pitches drop trash; cleaner workers Oliver/Chloe/Felix collect; player manual collection).
+- ✅ **Wild Trash Raccoon 🦝 random event** (scurries into camp, startled when Ranger approaches, drops Loot Bag with cash + gems + card chance).
+- ✅ **VIP Influencer 🤳 random event** (visits resort, camera flashes, triggers 60s resort-wide 2× Boost + large tip drop).
+- ✅ **Sauna, Hot Springs, and Canoe Rental Dock amenities** (Canoe dock at pond edge generating rental revenue, Alpine Sauna & Onsen requiring water connection generating bath tickets, both with progressive building upgrades).

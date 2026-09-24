@@ -230,6 +230,50 @@
     </div>
   </div>
 
+  <!-- Offline Welcome Back Modal Overlay -->
+  <div class="offline-modal-overlay" id="offline-modal" style="display: none;">
+    <div class="offline-modal-card">
+      <div class="offline-modal-header">
+        <div class="offline-modal-title">🏕️ WILLKOMMEN ZURÜCK!</div>
+      </div>
+
+      <div class="offline-time-banner" id="offline-time-text">
+        ⏳ Du warst 2h 15m abwesend
+      </div>
+
+      <div class="offline-summary-box">
+        <div class="offline-reward-row">
+          <div class="offline-reward-icon">💵</div>
+          <div class="offline-reward-details">
+            <div class="offline-reward-label">Camp-Umsatz (Aktiv)</div>
+            <div class="offline-reward-val" id="offline-cash-val">+$0</div>
+          </div>
+        </div>
+
+        <div class="offline-reward-row" id="offline-vault-row">
+          <div class="offline-reward-icon">🏛️</div>
+          <div class="offline-reward-details">
+            <div class="offline-reward-label">Empire Tresor-Gold</div>
+            <div class="offline-reward-val" id="offline-gold-val">+$0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="offline-tip-box" id="offline-tip-text">
+        💡 Dein Team hat den Campingplatz während deiner Abwesenheit am Laufen gehalten!
+      </div>
+
+      <div class="offline-actions">
+        <button class="btn-offline-claim" id="btn-offline-claim">
+          🎉 Einsammeln
+        </button>
+        <button class="btn-offline-double" id="btn-offline-double">
+          💎 2× Verdoppeln (25 Gems)
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Idle Main Menu (Primary Hub Screen) -->
   <div class="main-menu-overlay" id="idle-main-menu" style="display: none;">
     <div class="main-menu-container">
@@ -317,7 +361,7 @@
   </div>
 
   <!-- Game Engine Modules -->
-  <script src="/js/idle/sound.js?v=4"></script>
-  <script type="module" src="/js/idle/game2d.js?v=25"></script>
+  <script src="/js/idle/sound.js?v=6"></script>
+  <script type="module" src="/js/idle/game2d.js?v=27"></script>
 </body>
 </html>

@@ -39,7 +39,9 @@ export const BASE_BUILDING_UPGRADE_COSTS = {
   pad_water: 60,
   pad_gen: 75,
   pad_kiosk: 65,
-  pad_sports: 120
+  pad_sports: 120,
+  pad_canoe: 85,
+  pad_sauna: 140
 };
 
 export function getBuildingUpgradeCost(id, currentLevel = 1, costMult = 1.0) {

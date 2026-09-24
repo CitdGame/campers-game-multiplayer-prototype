@@ -56,6 +56,10 @@ class Campers2DGame {
     this.camX = 0;
     this.camY = 0;
     this.frame = 0;
+    this.zoom = 1.0;
+    this.targetZoom = 1.0;
+    this.initialPinchDist = null;
+    this.initialZoom = 1.0;
 
     // Modular Architecture Subsystems
     this.stateStore = new GameState();
@@ -277,11 +281,15 @@ class Campers2DGame {
     this.genPos = { x: 75, y: 35 };
     this.kioskPos = { x: centerX + Math.min(130, Math.round(this.worldW * 0.28)), y: this.worldH - 210 };
     this.sportsFieldPos = { x: Math.max(75, Math.round(centerX - this.worldW * 0.32)), y: this.worldH - 210 };
+    this.canoePos = { x: this.pondPos.x + 22, y: this.pondPos.y + 12 };
+    this.saunaPos = { x: Math.max(85, Math.round(centerX - this.worldW * 0.32)), y: Math.round(this.worldH * 0.28) };
 
     this.hasWaterPump = false;
     this.hasGenerator = false;
     this.hasKiosk = false;
     this.hasSportsField = false;
+    this.hasCanoeDock = false;
+    this.hasSauna = false;
 
     // Reset runtime entities
     this.pitches = [];
@@ -289,9 +297,14 @@ class Campers2DGame {
     this.upgradePads = [];
     this.cashDrops = [];
     this.trashBags = [];
+    this.lootBags = [];
     this.floatTexts = [];
     this.particles = [];
     this.campers = [];
+    this.raccoon = null;
+    this.raccoonTimer = 45.0;
+    this.vipCamper = null;
+    this.vipTimer = 75.0;
 
     // --- STARTER PITCHES ---
     this.registerPitch({
@@ -725,6 +738,39 @@ class Campers2DGame {
       });
     }
 
+    if (camp >= 2) {
+      this.createBuildPad({
+        id: 'pad_canoe',
+        name: 'Canoe Rental Dock',
+        cost: Math.round(95 * costMult),
+        x: this.canoePos.x,
+        y: this.canoePos.y,
+        onComplete: (isRestoring = false) => {
+          this.hasCanoeDock = true;
+          this.refreshUpgradePads();
+          if (!isRestoring) this.showFloatText(this.canoePos.x, this.canoePos.y, '🛶 Canoe Rental Open!', '#3498db');
+          this.updateHUD();
+        }
+      });
+    }
+
+    if (camp >= 4) {
+      this.createBuildPad({
+        id: 'pad_sauna',
+        name: 'Alpine Sauna & Onsen',
+        cost: Math.round(180 * costMult),
+        x: this.saunaPos.x,
+        y: this.saunaPos.y,
+        onComplete: (isRestoring = false) => {
+          this.hasSauna = true;
+          this.refreshUpgradePads();
+          this.updateGridLoad();
+          if (!isRestoring) this.showFloatText(this.saunaPos.x, this.saunaPos.y, '♨️ Sauna & Springs Open!', '#e67e22');
+          this.updateHUD();
+        }
+      });
+    }
+
     this.createBuildPad({
       id: 'pad_robin',
       name: "Robin's Cards",
@@ -929,6 +975,46 @@ class Campers2DGame {
       }
     }
 
+    if (this.hasCanoeDock) {
+      const curLvl = this.state.buildingLevels?.['pad_canoe'] || 1;
+      if (curLvl < maxLevel) {
+        const cost = getBuildingUpgradeCost('pad_canoe', curLvl, costMult);
+        newUpgradePads.push({
+          buildingId: 'pad_canoe',
+          buildingType: 'utility',
+          name: 'Canoe Dock',
+          currentLevel: curLvl,
+          targetLevel: curLvl + 1,
+          maxLevel,
+          cost,
+          paid: Math.min(cost, previousPaid['pad_canoe'] || 0),
+          x: this.canoePos.x,
+          y: this.canoePos.y + 16,
+          radius: 16
+        });
+      }
+    }
+
+    if (this.hasSauna) {
+      const curLvl = this.state.buildingLevels?.['pad_sauna'] || 1;
+      if (curLvl < maxLevel) {
+        const cost = getBuildingUpgradeCost('pad_sauna', curLvl, costMult);
+        newUpgradePads.push({
+          buildingId: 'pad_sauna',
+          buildingType: 'utility',
+          name: 'Alpine Sauna',
+          currentLevel: curLvl,
+          targetLevel: curLvl + 1,
+          maxLevel,
+          cost,
+          paid: Math.min(cost, previousPaid['pad_sauna'] || 0),
+          x: this.saunaPos.x,
+          y: this.saunaPos.y + 16,
+          radius: 16
+        });
+      }
+    }
+
     this.upgradePads = newUpgradePads;
   }
 
@@ -1031,6 +1117,9 @@ class Campers2DGame {
       power += (p.powerLoad || 0);
       water += (p.waterLoad || 0);
     });
+    if (this.hasSauna) {
+      water += 2;
+    }
     this.state.powerDemand = power;
     this.state.waterDemand = water;
 
@@ -1058,6 +1147,41 @@ class Campers2DGame {
   // --- TOUCH JOYSTICK & KEYBOARD CONTROLS ---
   initControls() {
     window.addEventListener('resize', () => this.onResize());
+
+    // Pinch-to-zoom (mobile touch) & Mouse Wheel zoom (desktop)
+    window.addEventListener('wheel', (e) => {
+      if (this.ui?.upgradesDrawer?.classList.contains('open') || this.isMainMenuOpen) return;
+      e.preventDefault();
+      const zoomDelta = -e.deltaY * 0.0015;
+      this.targetZoom = Math.max(0.65, Math.min(1.6, this.targetZoom + zoomDelta));
+    }, { passive: false });
+
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        this.initialPinchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        this.initialZoom = this.targetZoom;
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && this.initialPinchDist) {
+        const curDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const ratio = curDist / this.initialPinchDist;
+        this.targetZoom = Math.max(0.65, Math.min(1.6, this.initialZoom * ratio));
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) {
+        this.initialPinchDist = null;
+      }
+    }, { passive: true });
 
     const joyBase = document.getElementById('joystick-base');
     const joyKnob = document.getElementById('joystick-knob');
@@ -1283,6 +1407,7 @@ class Campers2DGame {
     };
 
     const openDrawerTab = (tabName) => {
+      window.soundFX?.playUiTap();
       const resolvedTab = tabName === 'ranger' ? 'franchise' : tabName;
       this.activeMainTab = resolvedTab;
       if (this.ui.mainTabs) {
@@ -1521,6 +1646,14 @@ class Campers2DGame {
     // Collect loot button click
     this.ui.btnCollectLoot?.addEventListener('click', () => {
       this.collectPendingLoot();
+    });
+
+    // Offline Welcome Back modal buttons
+    document.getElementById('btn-offline-claim')?.addEventListener('click', () => {
+      this.modalsUI.claimOfflineEarnings(false);
+    });
+    document.getElementById('btn-offline-double')?.addEventListener('click', () => {
+      this.modalsUI.claimOfflineEarnings(true);
     });
 
     this.updateHUD();
@@ -2148,6 +2281,16 @@ class Campers2DGame {
       }
     }
 
+    // Smooth zoom interpolation
+    this.zoom += (this.targetZoom - this.zoom) * 0.15;
+
+    // Ambient soundscape (birds, crackling fire, pond water)
+    const distToCampfire = Math.hypot(this.player.x - this.campfirePos.x, this.player.y - this.campfirePos.y);
+    const distToPond = Math.hypot(this.player.x - this.pondPos.x, this.player.y - this.pondPos.y);
+    const isNearCampfire = distToCampfire < 90 || this.state.campfireJoyTime > 0;
+    const isNearWater = distToPond < 100;
+    window.soundFX?.updateAmbient(dt, isNearCampfire, isNearWater);
+
     this.updatePlayer(dt);
     this.updateCamera();
     this.updateCampers(dt);
@@ -2158,7 +2301,12 @@ class Campers2DGame {
     this.updateCampfire(dt);
     this.updateFishing(dt);
     this.updateKiosk(dt);
+    this.updateCanoeDock(dt);
+    this.updateSauna(dt);
     this.updateTrashBags(dt);
+    this.updateLootBags(dt);
+    this.updateRaccoon(dt);
+    this.updateVIP(dt);
     this.updateCashDrops(dt);
     this.updateStaffWorkers(dt);
     this.updateParticles(dt);
@@ -2578,6 +2726,259 @@ class Campers2DGame {
     }
   }
 
+  // --- TRASH RACCOON & LOOT BAGS (INTERACTIVE RANDOM EVENT) ---
+  updateLootBags(dt) {
+    for (let i = this.lootBags.length - 1; i >= 0; i--) {
+      const bag = this.lootBags[i];
+      const dist = Math.hypot(this.player.x - bag.x, this.player.y - bag.y);
+      if (dist < 22) {
+        this.lootBags.splice(i, 1);
+        const campScale = Math.pow(1.30, (this.state.camp || 1) - 1);
+        const cashWon = Math.round((70 + Math.random() * 80) * campScale);
+        this.addCash(cashWon);
+
+        // 45% chance of 1-2 gems
+        let gemsWon = 0;
+        if (Math.random() < 0.45) {
+          gemsWon = Math.random() < 0.25 ? 2 : 1;
+          this.addGems(gemsWon);
+        }
+
+        // 30% chance of random manager card
+        let cardText = '';
+        if (Math.random() < 0.30) {
+          const mgrKeys = Object.keys(this.state.managers || {});
+          if (mgrKeys.length > 0) {
+            const randomKey = mgrKeys[Math.floor(Math.random() * mgrKeys.length)];
+            if (!this.state.managers[randomKey]) {
+              this.state.managers[randomKey] = { level: 0, cards: 0 };
+            }
+            this.state.managers[randomKey].cards = (this.state.managers[randomKey].cards || 0) + 1;
+            const mgrDef = MANAGER_DEFS[randomKey];
+            cardText = `, +1 ${mgrDef?.name || randomKey}`;
+            this.updateBadges();
+          }
+        }
+
+        if (!this.state.stats) this.state.stats = {};
+        this.state.stats.raccoonsChased = (this.state.stats.raccoonsChased || 0) + 1;
+
+        window.soundFX?.playChestOpen();
+        if (navigator.vibrate) navigator.vibrate(25);
+        const gemText = gemsWon > 0 ? ` +${gemsWon} 💎` : '';
+        this.showFloatText(bag.x, bag.y, `🎒 Beute: +$${cashWon} 💵${gemText}${cardText}!`, '#f1c40f');
+        this.updateHUD();
+      }
+    }
+  }
+
+  updateRaccoon(dt) {
+    if (!this.raccoon) {
+      this.raccoonTimer -= dt;
+      if (this.raccoonTimer <= 0) {
+        // Spawn wild raccoon from random map border
+        const side = Math.floor(Math.random() * 4);
+        let startX = 20, startY = 20;
+        if (side === 0) { startX = Math.random() * (this.worldW - 40) + 20; startY = 25; }
+        else if (side === 1) { startX = Math.random() * (this.worldW - 40) + 20; startY = this.worldH - 25; }
+        else if (side === 2) { startX = 25; startY = Math.random() * (this.worldH - 40) + 20; }
+        else { startX = this.worldW - 25; startY = Math.random() * (this.worldH - 40) + 20; }
+
+        // Pick a camp target to snoop around
+        let target = { x: this.woodpilePos.x, y: this.woodpilePos.y };
+        if (this.trashBags.length > 0) {
+          target = { x: this.trashBags[0].x, y: this.trashBags[0].y };
+        } else if (Math.random() < 0.5) {
+          target = { x: this.campfirePos.x + 25, y: this.campfirePos.y + 10 };
+        }
+
+        this.raccoon = {
+          x: startX,
+          y: startY,
+          targetX: target.x,
+          targetY: target.y,
+          state: 'sniffing',
+          speed: 40,
+          walkCycle: 0,
+          dir: startX < target.x ? 'right' : 'left',
+          bubble: '🦝',
+          sniffTimer: 0
+        };
+
+        window.soundFX?.playScurry();
+        this.showFloatText(startX, startY - 12, '🦝 Ein frecher Waschbär schleicht ins Camp!', '#e67e22');
+      }
+      return;
+    }
+
+    const r = this.raccoon;
+    r.walkCycle += dt * (r.state === 'fleeing' ? 14 : 7);
+
+    // Check interaction with Ranger
+    const distToPlayer = Math.hypot(this.player.x - r.x, this.player.y - r.y);
+    if (r.state === 'sniffing' && distToPlayer < 28) {
+      // Ranger chased / startled the raccoon!
+      r.state = 'fleeing';
+      r.speed = 95;
+      r.bubble = '🦝💨!';
+
+      // Drop Loot Bag at current location
+      this.lootBags.push({ x: r.x, y: r.y });
+
+      // Run off to nearest map border
+      const fleeX = r.x < this.worldW / 2 ? -30 : this.worldW + 30;
+      const fleeY = r.y < this.worldH / 2 ? -30 : this.worldH + 30;
+      r.targetX = fleeX;
+      r.targetY = fleeY;
+      r.dir = fleeX > r.x ? 'right' : 'left';
+
+      window.soundFX?.playScurry();
+      if (navigator.vibrate) navigator.vibrate(20);
+      this.showFloatText(r.x, r.y - 12, '💨 Waschbär verscheucht! Loot-Beutel fallengelassen! 🎒', '#f39c12');
+    }
+
+    // Move raccoon towards target
+    const dx = r.targetX - r.x;
+    const dy = r.targetY - r.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist > 4) {
+      const step = r.speed * dt;
+      r.x += (dx / dist) * Math.min(step, dist);
+      r.y += (dy / dist) * Math.min(step, dist);
+      r.dir = dx >= 0 ? 'right' : 'left';
+    } else {
+      if (r.state === 'fleeing') {
+        // Escaped off-screen
+        this.raccoon = null;
+        this.raccoonTimer = 90.0 + Math.random() * 60.0;
+        return;
+      } else {
+        // Idle sniffing then pick new target or head out
+        r.sniffTimer += dt;
+        if (r.sniffTimer > 5.0) {
+          r.targetX = Math.random() < 0.5 ? -30 : this.worldW + 30;
+          r.targetY = Math.random() * this.worldH;
+          r.state = 'fleeing';
+          r.speed = 50;
+        }
+      }
+    }
+  }
+
+  // --- VIP INFLUENCER EVENT (60S RESORT-WIDE 2X FRENZY BOOST) ---
+  updateVIP(dt) {
+    if (!this.vipCamper) {
+      this.vipTimer -= dt;
+      if (this.vipTimer <= 0) {
+        // Spawn VIP Influencer from entrance road
+        const centerX = Math.round(this.worldW / 2);
+        const luxuryPitch = this.pitches.find(p => p.tier === 'villa' || p.tier === 'lodge' || p.tier === 'chalet' || p.tier === 'cabin' || p.tier === 'glamping') || this.pitches[0];
+        const targetPos = luxuryPitch ? { x: luxuryPitch.x, y: luxuryPitch.y + 14 } : { x: this.receptionPos.x, y: this.receptionPos.y + 20 };
+
+        this.vipCamper = {
+          x: centerX,
+          y: this.worldH + 12,
+          targetX: targetPos.x,
+          targetY: targetPos.y,
+          state: 'arriving',
+          speed: 40,
+          walkCycle: 0,
+          dir: 'up',
+          bubble: '🤳📸',
+          partyTimer: 0,
+          flashTimer: 0
+        };
+
+        window.soundFX?.playFanfare();
+        this.showFloatText(centerX, this.worldH - 18, '🤳 Ein VIP-Influencer besucht dein Resort!', '#9b59b6');
+      }
+      return;
+    }
+
+    const vip = this.vipCamper;
+
+    if (vip.state === 'arriving') {
+      vip.walkCycle += dt * 8;
+      const dx = vip.targetX - vip.x;
+      const dy = vip.targetY - vip.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > 4) {
+        const step = vip.speed * dt;
+        vip.x += (dx / dist) * Math.min(step, dist);
+        vip.y += (dy / dist) * Math.min(step, dist);
+        vip.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      } else {
+        // Arrived at destination! Trigger 60s 2x Boost + Big Tip Drop!
+        vip.state = 'partying';
+        vip.partyTimer = 0;
+        vip.bubble = '✨📸';
+
+        this.state.boostTimer = Math.max(this.state.boostTimer || 0, 60);
+        this.state.boostMultiplier = 2.0;
+
+        const campScale = Math.pow(1.30, (this.state.camp || 1) - 1);
+        const vipTip = Math.round(250 * campScale);
+        this.addCash(vipTip);
+
+        if (!this.state.stats) this.state.stats = {};
+        this.state.stats.vipVisits = (this.state.stats.vipVisits || 0) + 1;
+
+        window.soundFX?.playCameraFlash();
+        if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+        this.showFloatText(vip.x, vip.y - 18, `⭐ VIP INFLUENCER: 2X RESORT FRENZY (60s)! +$${vipTip} 💵`, '#f1c40f');
+        this.updateHUD();
+      }
+    } else if (vip.state === 'partying') {
+      vip.partyTimer += dt;
+      vip.flashTimer += dt;
+      vip.walkCycle = Math.sin(vip.partyTimer * 4);
+
+      // Camera flash sparkles
+      if (vip.flashTimer >= 1.6) {
+        vip.flashTimer = 0;
+        window.soundFX?.playCameraFlash();
+        for (let k = 0; k < 6; k++) {
+          this.particles.push({
+            x: vip.x + (Math.random() - 0.5) * 24,
+            y: vip.y - 10 + (Math.random() - 0.5) * 20,
+            vx: (Math.random() - 0.5) * 15,
+            vy: (Math.random() - 0.5) * 15,
+            size: 2.5,
+            life: 0.35,
+            color: Math.random() < 0.5 ? '#fff' : '#f1c40f'
+          });
+        }
+      }
+
+      if (vip.partyTimer >= 12.0) {
+        // VIP departs
+        vip.state = 'leaving';
+        vip.targetX = Math.round(this.worldW / 2);
+        vip.targetY = this.worldH + 25;
+        vip.bubble = '🕶️💖';
+        vip.speed = 42;
+      }
+    } else if (vip.state === 'leaving') {
+      vip.walkCycle += dt * 8;
+      const dx = vip.targetX - vip.x;
+      const dy = vip.targetY - vip.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > 4) {
+        const step = vip.speed * dt;
+        vip.x += (dx / dist) * Math.min(step, dist);
+        vip.y += (dy / dist) * Math.min(step, dist);
+        vip.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      } else {
+        // Left the resort
+        this.vipCamper = null;
+        this.vipTimer = 180.0 + Math.random() * 80.0;
+      }
+    }
+  }
+
   // --- FISHING AT THE TRANQUIL POND ---
   updateFishing(dt) {
     const distToPier = Math.hypot(this.player.x - this.pierPos.x, this.player.y - this.pierPos.y);
@@ -2610,6 +3011,36 @@ class Campers2DGame {
       if (!this.state.stats) this.state.stats = {};
       this.state.stats.kioskOrders = (this.state.stats.kioskOrders || 0) + 1;
       this.showFloatText(this.kioskPos.x, this.kioskPos.y - 15, `🍦 Kiosk Sale +$${sale}`, '#e67e22');
+    }
+  }
+
+  // --- CANOE RENTAL DOCK ---
+  updateCanoeDock(dt) {
+    if (!this.hasCanoeDock) return;
+    if (this.frame % 120 === 0 && this.campers.length > 0) {
+      const canoeLvl = this.state.buildingLevels?.['pad_canoe'] || 1;
+      const canoeMult = getBuildingIncomeMultiplier(canoeLvl);
+      const rental = Math.round(35 * canoeMult);
+      this.addCash(rental);
+      if (!this.state.stats) this.state.stats = {};
+      this.state.stats.canoeRentals = (this.state.stats.canoeRentals || 0) + 1;
+      window.soundFX?.playWaterSplash();
+      this.showFloatText(this.canoePos.x, this.canoePos.y - 15, `🛶 Canoe Rental +$${rental}`, '#3498db');
+    }
+  }
+
+  // --- ALPINE SAUNA & ONSEN ---
+  updateSauna(dt) {
+    if (!this.hasSauna) return;
+    if (this.frame % 140 === 0 && this.campers.length > 0) {
+      const saunaLvl = this.state.buildingLevels?.['pad_sauna'] || 1;
+      const saunaMult = getBuildingIncomeMultiplier(saunaLvl);
+      const fee = Math.round(55 * saunaMult);
+      this.addCash(fee);
+      if (!this.state.stats) this.state.stats = {};
+      this.state.stats.saunaVisits = (this.state.stats.saunaVisits || 0) + 1;
+      window.soundFX?.playWaterSplash();
+      this.showFloatText(this.saunaPos.x, this.saunaPos.y - 15, `♨️ Sauna Bath +$${fee}`, '#e67e22');
     }
   }
 
@@ -3119,6 +3550,11 @@ class Campers2DGame {
     ctx.clearRect(0, 0, this.vWidth, this.vHeight);
 
     ctx.save();
+    // Center zoom transform
+    ctx.translate(this.vWidth / 2, this.vHeight / 2);
+    ctx.scale(this.zoom, this.zoom);
+    ctx.translate(-this.vWidth / 2, -this.vHeight / 2);
+
     // Offset by camera
     ctx.translate(-Math.floor(this.camX), -Math.floor(this.camY));
 
@@ -3258,6 +3694,34 @@ class Campers2DGame {
       ctx.fillText(`★ Lv.${sportsLvl}`, this.sportsFieldPos.x, this.sportsFieldPos.y - 18);
       ctx.restore();
     }
+    if (this.hasCanoeDock) {
+      PixelRenderer.drawCanoeDock(ctx, this.canoePos.x, this.canoePos.y, this.frame);
+      const canoeLvl = this.state.buildingLevels?.['pad_canoe'] || 1;
+      ctx.save();
+      ctx.fillStyle = 'rgba(41, 128, 185, 0.9)';
+      ctx.fillRect(this.canoePos.x - 14, this.canoePos.y - 24, 28, 8);
+      ctx.strokeStyle = '#111';
+      ctx.strokeRect(this.canoePos.x - 14, this.canoePos.y - 24, 28, 8);
+      ctx.fillStyle = '#f1c40f';
+      ctx.font = 'bold 6px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`★ Lv.${canoeLvl}`, this.canoePos.x, this.canoePos.y - 18);
+      ctx.restore();
+    }
+    if (this.hasSauna) {
+      PixelRenderer.drawSauna(ctx, this.saunaPos.x, this.saunaPos.y, this.frame);
+      const saunaLvl = this.state.buildingLevels?.['pad_sauna'] || 1;
+      ctx.save();
+      ctx.fillStyle = 'rgba(41, 128, 185, 0.9)';
+      ctx.fillRect(this.saunaPos.x - 14, this.saunaPos.y - 24, 28, 8);
+      ctx.strokeStyle = '#111';
+      ctx.strokeRect(this.saunaPos.x - 14, this.saunaPos.y - 24, 28, 8);
+      ctx.fillStyle = '#f1c40f';
+      ctx.font = 'bold 6px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`★ Lv.${saunaLvl}`, this.saunaPos.x, this.saunaPos.y - 18);
+      ctx.restore();
+    }
 
     // 5. Accommodations / Pitches (Drawn with regional architecture and occupancy badges)
     this.pitches.forEach(p => {
@@ -3374,6 +3838,11 @@ class Campers2DGame {
       PixelRenderer.drawTrashBag(ctx, tb.x, tb.y);
     });
 
+    // 7b. Dropped Loot Bags (from startled Raccoon)
+    this.lootBags.forEach(lb => {
+      PixelRenderer.drawLootBag(ctx, lb.x, lb.y, this.frame);
+    });
+
     // 8. Campers (All queueing, walking, relaxing, and leaving campers)
     this.campers.forEach(c => {
       PixelRenderer.drawCamper(ctx, c.x, c.y, c.type, c.dir, c.walkCycle);
@@ -3381,6 +3850,22 @@ class Campers2DGame {
         PixelRenderer.drawSpeechBubble(ctx, c.x, c.y, c.bubble, this.frame);
       }
     });
+
+    // 8b. VIP Influencer Camper Event
+    if (this.vipCamper) {
+      PixelRenderer.drawCamper(ctx, this.vipCamper.x, this.vipCamper.y, 'VIP', this.vipCamper.dir, this.vipCamper.walkCycle);
+      if (this.vipCamper.bubble) {
+        PixelRenderer.drawSpeechBubble(ctx, this.vipCamper.x, this.vipCamper.y, this.vipCamper.bubble, this.frame);
+      }
+    }
+
+    // 8c. Wild Trash Raccoon Event
+    if (this.raccoon) {
+      PixelRenderer.drawRaccoon(ctx, this.raccoon.x, this.raccoon.y, this.raccoon.dir, this.raccoon.walkCycle, this.raccoon.state === 'fleeing');
+      if (this.raccoon.bubble) {
+        PixelRenderer.drawSpeechBubble(ctx, this.raccoon.x, this.raccoon.y - 6, this.raccoon.bubble, this.frame);
+      }
+    }
 
     // 9. Staff Workers (Alex, Sam, Oliver, Chloe, Felix, Finn, Bella, Robin)
     Object.values(this.workers).forEach(worker => {
@@ -3580,32 +4065,54 @@ class Campers2DGame {
         }
       });
 
-      // Calculate offline earnings from previous automated campsites with boost support -> Empire Vault Gold
+      // Calculate offline earnings with boost support -> Active Camp Cash & Empire Vault Gold
       const lastSaved = p.lastTimestamp || 0;
       if (lastSaved > 0) {
         const now = Date.now();
-        const elapsedSec = Math.min(86400, Math.max(0, (now - lastSaved) / 1000));
-        if (elapsedSec > 10) {
+        const elapsedSec = Math.min(28800, Math.max(0, (now - lastSaved) / 1000)); // Cap at 8 hours (28,800s)
+        if (elapsedSec >= 30) {
+          // 1. Empire Vault Gold from other automated campsites
           const totalIdleRate = this.getTotalOtherCampsIdleRate();
-          let offlineCash = 0;
+          const globalMult = 1.0 + (this.state.franchiseUpgrades?.globalIncomeLevel || 0) * 0.15;
+
+          // 2. Active Camp Cash from current resort operations
+          const campActiveRate = calculateCampActiveRate({
+            world: this.state.world || 1,
+            region: this.state.region || 1,
+            camp: this.state.camp || 1,
+            completedPads: Array.from(this.completedPads || []),
+            managers: this.state.managers,
+            buildingLevels: this.state.buildingLevels,
+            hasWaterPump: this.hasWaterPump,
+            hasKiosk: this.hasKiosk
+          });
+          const activeOfflineRate = Math.max(0, campActiveRate * 0.50);
+
+          let offlineVaultGold = 0;
+          let offlineCampCash = 0;
+
           if (this.state.boostTimer > 0) {
             const boostedSec = Math.min(elapsedSec, this.state.boostTimer);
             const normalSec = Math.max(0, elapsedSec - boostedSec);
-            offlineCash = Math.round(totalIdleRate * (boostedSec * (this.state.boostMultiplier || 2.0) + normalSec));
+            const boostMult = this.state.boostMultiplier || 2.0;
+
+            offlineVaultGold = Math.round((totalIdleRate * (boostedSec * boostMult + normalSec)) * globalMult);
+            offlineCampCash = Math.round(activeOfflineRate * (boostedSec * boostMult + normalSec));
+
             this.state.boostTimer = Math.max(0, this.state.boostTimer - elapsedSec);
             if (this.state.boostTimer <= 0) this.state.boostMultiplier = 1.0;
           } else {
-            offlineCash = Math.round(totalIdleRate * elapsedSec);
+            offlineVaultGold = Math.round(totalIdleRate * elapsedSec * globalMult);
+            offlineCampCash = Math.round(activeOfflineRate * elapsedSec);
           }
-          if (offlineCash > 0) {
-            const globalMult = 1.0 + (this.state.franchiseUpgrades?.globalIncomeLevel || 0) * 0.15;
-            const vaultGoldEarned = Math.round(offlineCash * globalMult);
-            this.addEmpireGold(vaultGoldEarned);
-            if (!this.state.stats) this.state.stats = {};
-            this.state.stats.totalVaultGoldEarned = (this.state.stats.totalVaultGoldEarned || 0) + vaultGoldEarned;
+
+          if (offlineCampCash > 0 || offlineVaultGold > 0) {
             setTimeout(() => {
-              this.showFloatText(this.player.x, this.player.y - 20, `💤 Offline Vault: +$${vaultGoldEarned} 🏛️!`, '#ffd700');
-              window.soundFX?.playCoin();
+              this.modalsUI.showOfflineWelcome({
+                elapsedSec,
+                campCash: offlineCampCash,
+                vaultGold: offlineVaultGold
+              });
             }, 600);
           }
         }

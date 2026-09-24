@@ -190,9 +190,18 @@ export class PixelRenderer {
     let shirtColor = PIXEL_COLORS.hippiePurple;
     if (type === 'Families') shirtColor = PIXEL_COLORS.familyBlue;
     if (type === 'Snobs') shirtColor = PIXEL_COLORS.snobNavy;
+    if (type === 'VIP') shirtColor = '#8e44ad';
 
     ctx.fillStyle = shirtColor;
     ctx.fillRect(-5, -13 - bob, 10, 8);
+
+    if (type === 'VIP') {
+      // Golden lapel & scarf
+      ctx.fillStyle = '#f1c40f';
+      ctx.fillRect(-2, -13 - bob, 4, 8);
+      ctx.fillStyle = '#f39c12';
+      ctx.fillRect(-1, -12 - bob, 2, 6);
+    }
 
     // Head
     ctx.fillStyle = PIXEL_COLORS.skin;
@@ -213,6 +222,26 @@ export class PixelRenderer {
       ctx.fillRect(-4, -24 - bob, 8, 3);  // Crown
       ctx.fillStyle = '#000';
       ctx.fillRect(-4, -17 - bob, 8, 2);  // Shades
+    } else if (type === 'VIP') {
+      // Golden Tiara & Hollywood Sunglasses + Selfie Stick
+      ctx.fillStyle = '#f1c40f';
+      ctx.fillRect(-4, -22 - bob, 8, 3);
+      ctx.fillRect(-4, -24 - bob, 2, 2);
+      ctx.fillRect(-1, -25 - bob, 2, 3);
+      ctx.fillRect(2, -24 - bob, 2, 2);
+      // Designer Shades
+      ctx.fillStyle = '#111';
+      ctx.fillRect(-4, -17 - bob, 8, 3);
+      ctx.fillStyle = '#5dade2';
+      ctx.fillRect(-3, -16 - bob, 1, 1);
+      ctx.fillRect(1, -16 - bob, 1, 1);
+      // Smartphone / Selfie Stick held to side
+      ctx.fillStyle = '#bdc3c7';
+      ctx.fillRect(5, -16 - bob, 2, 10);
+      ctx.fillStyle = '#2c3e50';
+      ctx.fillRect(4, -18 - bob, 4, 3);
+      ctx.fillStyle = '#f1c40f';
+      ctx.fillRect(5, -18 - bob, 1, 1);
     } else {
       // Family Cap
       ctx.fillStyle = '#e67e22';
@@ -850,6 +879,140 @@ export class PixelRenderer {
     ctx.restore();
   }
 
+  // Draw Canoe Rental Dock at the pond edge
+  static drawCanoeDock(ctx, x, y, frame = 0) {
+    ctx.save();
+    ctx.translate(Math.floor(x), Math.floor(y));
+
+    // Wooden Pier / Jetty platform
+    ctx.fillStyle = PIXEL_COLORS.woodDark;
+    ctx.fillRect(-16, -10, 32, 20);
+    ctx.fillStyle = PIXEL_COLORS.woodLight;
+    ctx.fillRect(-15, -9, 30, 18);
+
+    // Planks
+    ctx.fillStyle = PIXEL_COLORS.woodDark;
+    for (let py = -6; py < 8; py += 4) {
+      ctx.fillRect(-15, py, 30, 1);
+    }
+
+    // Mooring bollards & posts
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(-14, -12, 3, 4);
+    ctx.fillRect(11, -12, 3, 4);
+
+    // Lifebuoy ring mounted on dock post
+    ctx.fillStyle = '#e74c3c';
+    ctx.beginPath();
+    ctx.arc(-11, 4, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(-11, 4, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Red Canoe #1 (floating on water beside dock, gently bobbing)
+    const bob1 = Math.sin(frame * 0.08) * 1.5;
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath();
+    ctx.ellipse(18, 2 + bob1, 14, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e74c3c';
+    ctx.beginPath();
+    ctx.ellipse(18, 2 + bob1, 12, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Wooden paddle inside canoe
+    ctx.fillStyle = PIXEL_COLORS.woodLight;
+    ctx.fillRect(12, 1 + bob1, 12, 1);
+
+    // Teal Canoe #2 (floating above)
+    const bob2 = Math.cos(frame * 0.09) * 1.5;
+    ctx.fillStyle = '#16a085';
+    ctx.beginPath();
+    ctx.ellipse(18, -10 + bob2, 14, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1abc9c';
+    ctx.beginPath();
+    ctx.ellipse(18, -10 + bob2, 12, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sign "CANOE"
+    ctx.fillStyle = PIXEL_COLORS.woodDark;
+    ctx.fillRect(-14, -20, 28, 7);
+    ctx.fillStyle = '#f1c40f';
+    ctx.font = '5px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('🛶 CANOE', 0, -15);
+
+    ctx.restore();
+  }
+
+  // Draw Hot Springs & Alpine Sauna (Thermal bath with steam)
+  static drawSauna(ctx, x, y, frame = 0) {
+    ctx.save();
+    ctx.translate(Math.floor(x), Math.floor(y));
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(0, 14, 28, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hot Springs Natural Stone Rim
+    ctx.fillStyle = '#7f8c8d';
+    ctx.beginPath();
+    ctx.ellipse(-8, 2, 20, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#95a5a6';
+    ctx.beginPath();
+    ctx.ellipse(-8, 2, 18, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Steaming Blue Thermal Water
+    ctx.fillStyle = '#48c9b0';
+    ctx.beginPath();
+    ctx.ellipse(-8, 2, 15, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#76d7c4';
+    ctx.beginPath();
+    ctx.ellipse(-8, 2, 12, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cedar Sauna Barrel / Hut (Right side)
+    ctx.fillStyle = PIXEL_COLORS.woodDark;
+    ctx.fillRect(8, -16, 20, 26);
+    ctx.fillStyle = PIXEL_COLORS.woodLight;
+    ctx.fillRect(9, -15, 18, 24);
+    // Dark door
+    ctx.fillStyle = '#4a235a';
+    ctx.fillRect(13, -8, 10, 17);
+
+    // Warm stones with steam
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(-12, 0, 4, 4);
+    ctx.fillRect(-8, -2, 5, 3);
+    ctx.fillRect(-4, 1, 4, 3);
+
+    // Animated Rising Steam Vapor Particles
+    const steamY1 = -((frame * 0.8) % 18);
+    const steamY2 = -(((frame + 9) * 0.8) % 18);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    ctx.fillRect(-10, -5 + steamY1, 3, 3);
+    ctx.fillRect(-9, -7 + steamY1, 2, 2);
+    ctx.fillRect(-4, -5 + steamY2, 3, 3);
+    ctx.fillRect(-5, -7 + steamY2, 2, 2);
+
+    // Sign "♨️ SAUNA"
+    ctx.fillStyle = PIXEL_COLORS.woodDark;
+    ctx.fillRect(4, -25, 26, 7);
+    ctx.fillStyle = '#e67e22';
+    ctx.font = '5px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('♨️ SAUNA', 17, -20);
+
+    ctx.restore();
+  }
+
   // Draw Retro Speech Bubble over character heads
   static drawSpeechBubble(ctx, x, y, text, frame = 0) {
     ctx.save();
@@ -915,6 +1078,123 @@ export class PixelRenderer {
     // Yellow tie
     ctx.fillStyle = '#f1c40f';
     ctx.fillRect(-2, -5, 4, 2);
+
+    ctx.restore();
+  }
+
+  // Draw Wild Trash Raccoon (Scurries around camp, drops loot bag when chased)
+  static drawRaccoon(ctx, x, y, dir = 'right', walkCycle = 0, isFleeing = false) {
+    ctx.save();
+    ctx.translate(Math.floor(x), Math.floor(y));
+    if (dir === 'left') {
+      ctx.scale(-1, 1);
+    }
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+    ctx.beginPath();
+    ctx.ellipse(0, 1, 9, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const bob = Math.abs(Math.sin(walkCycle * 1.5)) * 1.5;
+    const leg1 = Math.sin(walkCycle * 2) * 2;
+    const leg2 = -leg1;
+
+    // Bushy Ringed Tail (stretching behind to the left)
+    const tailWiggle = Math.sin(walkCycle * 2) * 2;
+    const tailY = -6 - bob + (isFleeing ? -3 + tailWiggle : tailWiggle);
+    ctx.fillStyle = '#5d6d7e';
+    ctx.fillRect(-12, tailY, 5, 4);
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(-15, tailY - 1, 4, 4);
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fillRect(-18, tailY - 2, 4, 4);
+    ctx.fillStyle = '#1c2833';
+    ctx.fillRect(-20, tailY - 1, 3, 3); // Tail tip
+
+    // Back & Front Legs
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(-5, -2 + leg1, 3, 3);
+    ctx.fillRect(3, -2 + leg2, 3, 3);
+
+    // Body (Grey fur)
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fillRect(-7, -9 - bob, 12, 7);
+    ctx.fillStyle = '#bdc3c7'; // Light belly
+    ctx.fillRect(-4, -6 - bob, 8, 4);
+
+    // Head
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fillRect(4, -11 - bob, 7, 6);
+
+    // Pointy Ears
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(4, -14 - bob, 2, 3);
+    ctx.fillRect(7, -14 - bob, 2, 3);
+    ctx.fillStyle = '#f1948a'; // Pink inside
+    ctx.fillRect(5, -13 - bob, 1, 2);
+
+    // Bandit Mask across eyes
+    ctx.fillStyle = '#1c2833';
+    ctx.fillRect(6, -10 - bob, 5, 3);
+
+    // White snout & whiskers
+    ctx.fillStyle = '#ecf0f1';
+    ctx.fillRect(9, -8 - bob, 3, 3);
+    ctx.fillStyle = '#000'; // Nose
+    ctx.fillRect(11, -8 - bob, 2, 2);
+
+    // Alert little eyes
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(7, -10 - bob, 2, 2);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(8, -10 - bob, 1, 1);
+
+    // If fleeing, render speed sweat drop
+    if (isFleeing) {
+      ctx.fillStyle = '#5dade2';
+      ctx.fillRect(-2, -15 - bob, 2, 3);
+    }
+
+    ctx.restore();
+  }
+
+  // Draw dropped Loot Bag (Dropped by Raccoon)
+  static drawLootBag(ctx, x, y, frame = 0) {
+    ctx.save();
+    ctx.translate(Math.floor(x), Math.floor(y));
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 7, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const bob = Math.sin(frame * 0.15) * 1.5;
+
+    // Leather loot pouch
+    ctx.fillStyle = '#b9770e';
+    ctx.fillRect(-5, -10 - bob, 10, 9);
+    ctx.fillStyle = '#d68910';
+    ctx.fillRect(-4, -9 - bob, 8, 7);
+
+    // Tied gold cord at top
+    ctx.fillStyle = '#f1c40f';
+    ctx.fillRect(-3, -12 - bob, 6, 2);
+    ctx.fillRect(-4, -14 - bob, 8, 2);
+
+    // Golden Star / Buckle
+    ctx.fillStyle = '#f1c40f';
+    ctx.fillRect(-1, -7 - bob, 2, 3);
+    ctx.fillRect(-2, -6 - bob, 4, 1);
+
+    // Glint sparkle
+    if (frame % 20 < 10) {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(3, -11 - bob, 1, 1);
+      ctx.fillRect(2, -10 - bob, 3, 1);
+      ctx.fillRect(3, -9 - bob, 1, 1);
+    }
 
     ctx.restore();
   }

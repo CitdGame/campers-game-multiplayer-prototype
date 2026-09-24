@@ -351,4 +351,82 @@ export class ModalsUI {
     this.game.updateBadges();
     this.game.saveState();
   }
+
+  // --- OFFLINE EARNINGS WELCOME MODAL ---
+  showOfflineWelcome(offlineData) {
+    const modal = document.getElementById('offline-modal');
+    if (!modal) return;
+
+    this.pendingOfflineData = offlineData;
+
+    const timeText = document.getElementById('offline-time-text');
+    const cashVal = document.getElementById('offline-cash-val');
+    const goldVal = document.getElementById('offline-gold-val');
+    const vaultRow = document.getElementById('offline-vault-row');
+    const doubleBtn = document.getElementById('btn-offline-double');
+
+    const totalMinutes = Math.floor(offlineData.elapsedSec / 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins} min`;
+
+    if (timeText) {
+      timeText.textContent = `⏳ Du warst ${timeStr} abwesend`;
+    }
+    if (cashVal) {
+      cashVal.textContent = `+$${(offlineData.campCash || 0).toLocaleString()}`;
+    }
+    if (goldVal) {
+      goldVal.textContent = `+$${(offlineData.vaultGold || 0).toLocaleString()}`;
+    }
+    if (vaultRow) {
+      vaultRow.style.display = (offlineData.vaultGold > 0) ? 'flex' : 'none';
+    }
+    if (doubleBtn) {
+      const userGems = this.state.gems || 0;
+      doubleBtn.innerHTML = `💎 2× Verdoppeln (${userGems >= 25 ? '25 Gems' : 'Nicht genug 💎'})`;
+      doubleBtn.disabled = userGems < 25;
+      doubleBtn.style.opacity = userGems < 25 ? '0.5' : '1.0';
+      doubleBtn.style.cursor = userGems < 25 ? 'not-allowed' : 'pointer';
+    }
+
+    modal.style.display = 'flex';
+    window.soundFX?.playFanfare();
+  }
+
+  claimOfflineEarnings(isDouble = false) {
+    const modal = document.getElementById('offline-modal');
+    if (!modal || !this.pendingOfflineData) return;
+
+    if (isDouble) {
+      const userGems = this.state.gems || 0;
+      if (userGems < 25) return;
+      this.state.gems -= 25;
+    }
+
+    const mult = isDouble ? 2 : 1;
+    const cash = (this.pendingOfflineData.campCash || 0) * mult;
+    const gold = (this.pendingOfflineData.vaultGold || 0) * mult;
+
+    if (cash > 0) {
+      this.game.addCash(cash);
+      if (!this.state.stats) this.state.stats = {};
+      this.state.stats.totalOfflineCashEarned = (this.state.stats.totalOfflineCashEarned || 0) + cash;
+    }
+    if (gold > 0) {
+      this.game.addEmpireGold(gold);
+      if (!this.state.stats) this.state.stats = {};
+      this.state.stats.totalVaultGoldEarned = (this.state.stats.totalVaultGoldEarned || 0) + gold;
+    }
+
+    window.soundFX?.playCoin();
+    const doubleMsg = isDouble ? ' (2x VERDOPPELT!)' : '';
+    this.game.showFloatText(this.game.player.x, this.game.player.y - 25, `🎉 Willkommen zurück! +$${cash} 💵${gold > 0 ? ` +$${gold} 🏛️` : ''}${doubleMsg}`, '#2ecc71');
+
+    this.pendingOfflineData = null;
+    modal.style.display = 'none';
+
+    this.game.updateHUD();
+    this.game.saveState();
+  }
 }

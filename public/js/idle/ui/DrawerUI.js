@@ -950,6 +950,7 @@ export class DrawerUI {
         const action = target.dataset.action;
         const id = target.dataset.id;
         if (!action) return;
+        window.soundFX?.playUiTap();
 
         if (action === 'manager') {
           this.activateOrUpgradeManager(id);
